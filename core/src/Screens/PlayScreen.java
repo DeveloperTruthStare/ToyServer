@@ -62,6 +62,21 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void client() {
         // Send message that we've connected
+        this.gameController = new GameController();
+        this.gameController.player1 = new GameObject(0, 0);
+        this.gameController.ball = new GameObject(0, 2);
+        this.gameController.player2 = new GameObject(1, 2);
+
+        this.gameController.player1.position = new Vector2(100, 490);
+        this.gameController.player1.size = new Vector2(20, 100);
+
+        this.gameController.ball.position = new Vector2((float) 1920 /2 - 5, (float) 1080 /2 - 5);
+        this.gameController.ball.size = new Vector2(10, 10);
+        this.gameController.ball.velocity = new Vector2(0, 0);
+
+        this.gameController.player2.position = new Vector2(1820, 490);
+        this.gameController.player2.size = new Vector2(20, 100);
+
         this.game.lobby.sendNetworkMessage("Connected");
         this.gameController.gameState = GameState.WAITING_FOR_HOST;
     }
@@ -148,6 +163,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void update(float dt) throws JsonProcessingException {
         if (this.gameController.gameState == GameState.WAITING_FOR_PLAYERS) return;
         this.gameController.update(dt);
+
+        this.game.lobby.updateGameState(this.gameController);
     }
     public void checkCollisions() {
         if (this.gameController.ball.contains(this.gameController.player1)) {
