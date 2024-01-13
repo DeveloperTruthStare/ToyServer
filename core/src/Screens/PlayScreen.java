@@ -73,7 +73,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void client() {
         this.player = createNetworkedGO(1, 1);
-        this.ball = new GameObject(-1);
+        this.ball = new GameObject(-1, -1);
 
         player.position = new Vector2(1820, 490);
         player.size = new Vector2(20, 100);
@@ -85,7 +85,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void updateObject(String json) {
         try {
             GameObject gameObject = new ObjectMapper().readValue(json, GameObject.class);
-
+            if (gameObject.controller == 0 && isPlayer1) return;
+            if (gameObject.controller == 1 && !isPlayer1) return;
             for(int i = 0; i < networkedGameObjects.size(); ++i) {
                 if (networkedGameObjects.get(i).getUniqueID() != gameObject.getUniqueID()) continue;
                 networkedGameObjects.set(i, gameObject);
@@ -139,7 +140,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
             throw new RuntimeException(e);
         }
 
-        Gdx.gl.glClearColor(0.1f, 0.01f, 0.01f, 1);
+        Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         game.batch.begin();
 
@@ -165,11 +166,12 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
 
     public void update(float dt) throws JsonProcessingException {
+        System.out.println(ball.velocity.x);
         if (this.state < WAITING_FOR_HOST) return;
         for (GameObject go : networkedGameObjects) {
             go.update(dt);
             if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
-                if (go.lastUpdate >= 10) {
+                if (go.lastUpdate >= 20) {
                     go.lastUpdate = 0;
                     this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
                 }
