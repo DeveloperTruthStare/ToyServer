@@ -48,7 +48,13 @@ public class GameObject {
         this.lastUpdate += 1;
         this.position = new Vector2(this.position.x + this.velocity.x, this.position.y + this.velocity.y);
     }
-
+    public void set(GameObject go) {
+        this.position = go.position;
+        this.velocity = go.velocity;
+        this.size = go.size;
+        this.uniqueID = go.uniqueID;
+        this.controller = go.controller;
+    }
     public boolean contains(GameObject go) {
         return this.position.x < go.position.x + go.size.x && this.position.x + this.size.x > go.position.x &&
                 this.position.y < go.position.y + go.size.y && this.position.y + this.size.y > go.position.y;
