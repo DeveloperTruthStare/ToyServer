@@ -13,6 +13,7 @@ import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.ByteBuffer;
 
@@ -31,11 +32,20 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     public SteamID currentSteamLobbyId;
     public NetworkMessageProcessor msgProcessor;
     private ToyServer game;
+    public GameController gameData;
+
+    public SteamID steamUserID;
+    public void updateGameState(GameController state) throws JsonProcessingException {
+        String msg = new ObjectMapper().writeValueAsString(state);
+        this.matchmaking.setLobbyData(currentSteamLobbyId, "gameState", msg);
+    }
+
     public SteamLobby(ToyServer game) {
         this.game = game;
         steamFriends = new SteamFriends(this);
         steamUser = new SteamUser(this);
 
+        steamUserID = steamUser.getSteamID();
         matchmaking = new SteamMatchmaking(this);
     }
 
@@ -80,7 +90,16 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     }
     @Override
     public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
+        if (steamIDMember == this.steamUserID) return;
         System.out.println("Lobby Data Updated");
+        // Assume it's the game data
+        String msg = matchmaking.getLobbyData(currentSteamLobbyId, "gameState");
+        try {
+            GameController state = new ObjectMapper().readValue(msg, GameController.class);
+            msgProcessor.processGameState(state);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

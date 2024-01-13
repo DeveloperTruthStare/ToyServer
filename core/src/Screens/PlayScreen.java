@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.smith.toyserver.GameController;
+import com.smith.toyserver.GameState;
 import com.smith.toyserver.utils.Vector2;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,32 +28,14 @@ import java.util.ArrayList;
 
 public class PlayScreen implements Screen, InputProcessor, IButtonCallback, NetworkMessageProcessor {
     private final ToyServer game;
-
-
-
-
-    public int state = 0;
-    private final static int WAITING_FOR_PLAYER = 0;
-    private final static int WAITING_FOR_HOST = 1;
-    private final static int PLAYING = 2;
-    private final static int GAME_OVER = 3;
     public BitmapFont font;
-
-    private GameObject ball;
-    private GameObject player;
     public boolean isPlayer1 = false;
-    public ArrayList<GameObject> networkedGameObjects;
-    public GameObject createNetworkedGO(int controller, int uniqueId) {
-        GameObject go = new GameObject(controller, uniqueId);
-        this.networkedGameObjects.add(go);
-        return go;
-    }
-
+    public GameController gameController;
     public PlayScreen(ToyServer game) {
         this.game = game;
         this.game.setCurrentProcessor(this);
         this.game.lobby.msgProcessor = this;
-        this.networkedGameObjects = new ArrayList<>();
+        this.gameController = new GameController();
 
         font = new BitmapFont();
         font.getData().setScale(5);
@@ -60,72 +44,52 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void host() {
         this.game.lobby.createLobby();
         this.isPlayer1 = true;
-        this.player = createNetworkedGO(0, 0);
-        this.ball = createNetworkedGO(0, 2);
-        player.position = new Vector2(100, 490);
-        player.size = new Vector2(20, 100);
+        this.gameController.player1 = new GameObject(0, 0);
+        this.gameController.ball = new GameObject(0, 2);
+        this.gameController.player2 = new GameObject(1, 2);
 
-        ball.position = new Vector2((float) 1920 /2 - 5, (float) 1080 /2 - 5);
-        ball.size = new Vector2(10, 10);
+        this.gameController.player1.position = new Vector2(100, 490);
+        this.gameController.player1.size = new Vector2(20, 100);
 
-        ball.velocity = new Vector2(0, 0);
+        this.gameController.ball.position = new Vector2((float) 1920 /2 - 5, (float) 1080 /2 - 5);
+        this.gameController.ball.size = new Vector2(10, 10);
+        this.gameController.ball.velocity = new Vector2(0, 0);
+
+        this.gameController.player2.position = new Vector2(1820, 490);
+        this.gameController.player2.size = new Vector2(20, 100);
     }
 
     public void client() {
-        this.player = createNetworkedGO(1, 1);
-        this.ball = new GameObject(-1, -1);
-
-        player.position = new Vector2(1820, 490);
-        player.size = new Vector2(20, 100);
-
         // Send message that we've connected
         this.game.lobby.sendNetworkMessage("Connected");
-        this.state = WAITING_FOR_HOST;
+        this.gameController.gameState = GameState.WAITING_FOR_HOST;
     }
-    public void updateObject(String json) {
-        try {
-            GameObject gameObject = new ObjectMapper().readValue(json, GameObject.class);
-            if (gameObject.controller == 0 && isPlayer1) return;
-            if (gameObject.controller == 1 && !isPlayer1) return;
-            for(int i = 0; i < networkedGameObjects.size(); ++i) {
-                if (networkedGameObjects.get(i).getUniqueID() != gameObject.getUniqueID()) continue;
-                networkedGameObjects.get(i).set(gameObject);
-                return;
-            }
-            networkedGameObjects.add(gameObject);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }}
+
     @Override
     public void processNetworkMessage(String msg) {
+        if (msg.startsWith("SetPlayer1:")) {
 
-        if (msg.startsWith("Connected") && isPlayer1) {
-            System.out.println(msg);
-            this.state = WAITING_FOR_HOST;
-            try {
-                this.game.lobby.sendNetworkMessage("Set Ball:" + new ObjectMapper().writeValueAsString(this.ball));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        } else if (msg.startsWith("Update Object:")) {
-            updateObject(msg.substring(14, msg.length()-1));
-        } else if (msg.startsWith("Set Ball:") && !isPlayer1) {
-            System.out.println(msg);
-            try {
-                GameObject newGo = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
-                this.ball.velocity = newGo.velocity;
-                this.ball.position = newGo.position;
-                this.ball.controller = newGo.controller;
-                this.ball.uniqueID = newGo.uniqueID;
-                this.ball.size = newGo.size;
+        } else if (msg.startsWith("SetPlayer2:")) {
 
-                this.networkedGameObjects.add(this.ball);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+        } else if (msg.startsWith("SetBall:")) {
+
+        } else if (msg.startsWith("SetState:")) {
+            msg = msg.substring(9);
+            if (msg.startsWith("PLAYING")) {
+                this.gameController.gameState = GameState.PLAYING;
             }
-        } else if (msg.startsWith("SetPlaying")) {
-            System.out.println(msg);
-            this.state = PLAYING;
+        }
+    }
+    @Override
+    public void processGameState(GameController  state) {
+        if (isPlayer1) {
+            // Only update values controlled by not us
+            this.gameController.player2.set(state.player2);
+        } else {
+            // Only update host controlled values
+            this.gameController.gameState = state.gameState;
+            this.gameController.player1.set(state.player1);
+            this.gameController.ball.set(state.ball);
         }
     }
     @Override
@@ -136,8 +100,17 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     }
 
+    public float time = 0;
+    public int frames = 0;
     @Override
     public void render(float delta) {
+        time += delta;
+        frames++;
+        if (time >= 1) {
+            time = 0;
+            System.out.println(frames);
+            frames = 0;
+        }
         try {
             this.update(delta);
         } catch (JsonProcessingException e) {
@@ -148,8 +121,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         game.batch.begin();
 
-        switch (this.state) {
-            case WAITING_FOR_PLAYER:
+        switch (this.gameController.gameState) {
+            case WAITING_FOR_PLAYERS:
                 font.draw(game.batch, "Waiting for Another Player", (float) 1920 /2 - 300, 720);
                 break;
             case WAITING_FOR_HOST:
@@ -162,45 +135,34 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
         game.batch.end();
 
-        for (GameObject go : this.networkedGameObjects) {
-           go.draw();
-        }
+        this.gameController.player1.draw();
+        this.gameController.player2.draw();
+        this.gameController.ball.draw();
 
         this.checkCollisions();
     }
 
     public void update(float dt) throws JsonProcessingException {
-        System.out.println(networkedGameObjects.size());
-        if (this.state < WAITING_FOR_HOST) return;
-        for (GameObject go : networkedGameObjects) {
-            go.update(dt);
-            if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
-                if (go.lastUpdate >= 200) {
-                    go.lastUpdate = 0;
-                    this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
-                }
-            }
-        }
+        if (this.gameController.gameState == GameState.WAITING_FOR_PLAYERS) return;
+        this.gameController.update(dt);
     }
     public void checkCollisions() {
-        System.out.println(this.ball.position.x);
-        if (this.ball == null) return;
-        for (GameObject go : networkedGameObjects) {
-            if (go.getUniqueID() == this.ball.getUniqueID()) continue;
-            if (this.ball.contains(go)) {
-                // move the ball away
-                if (this.ball.position.x > go.position.x)
-                    this.ball.velocity = new Vector2(5, 0);
-                else
-                    this.ball.velocity = new Vector2(-5, 0);
-            }
+        if (this.gameController.ball.contains(this.gameController.player1)) {
+            this.gameController.ball.velocity = new Vector2(5, 0);
+        } else if (this.gameController.ball.contains(this.gameController.player2)) {
+            this.gameController.ball.velocity = new Vector2(-5, 0);
         }
     }
 
     public void startGame() {
-        this.state = PLAYING;
-        this.ball.velocity = new Vector2(5, 0);
-        this.game.lobby.sendNetworkMessage("SetPlaying");
+        this.gameController.gameState = GameState.PLAYING;
+        this.gameController.ball.velocity = new Vector2(5, 0);
+
+        try {
+            this.game.lobby.updateGameState(this.gameController);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -227,8 +189,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     // Input Processor
     @Override
     public boolean keyDown(int keycode) {
-        switch (this.state) {
-            case WAITING_FOR_PLAYER:
+        switch (this.gameController.gameState) {
+            case WAITING_FOR_PLAYERS:
                 return false;
             case WAITING_FOR_HOST:
                 if (!isPlayer1) return false;
@@ -237,9 +199,9 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 break;
             case PLAYING:
                 if (keycode == Input.Keys.W) {
-                    player.velocity = new Vector2(0, 10);
+                    gameController.player1.velocity = new Vector2(0, 10);
                 } else if (keycode == Input.Keys.S) {
-                    player.velocity = new Vector2(0, -10);
+                    gameController.player1.velocity = new Vector2(0, -10);
                 }
                 break;
         }
@@ -250,8 +212,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
     @Override
     public boolean keyUp(int keycode) {
-        switch (this.state) {
-            case WAITING_FOR_PLAYER:
+        switch (this.gameController.gameState) {
+            case WAITING_FOR_PLAYERS:
                 return false;
             case WAITING_FOR_HOST:
                 if (!isPlayer1) return false;
@@ -260,9 +222,9 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 break;
             case PLAYING:
                 if (keycode == Input.Keys.W) {
-                    player.velocity = new Vector2(0, 0);
+                    gameController.player1.velocity = new Vector2(0, 0);
                 } else if (keycode == Input.Keys.S) {
-                    player.velocity = new Vector2(0, -0);
+                    gameController.player1.velocity = new Vector2(0, -0);
                 }
                 break;
         }
