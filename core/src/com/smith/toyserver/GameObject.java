@@ -2,6 +2,9 @@ package com.smith.toyserver;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.smith.toyserver.utils.Vector2;
+
+import java.awt.Shape;
+
 public class GameObject {
     public Vector2 position;
     public Vector2 size;
@@ -10,6 +13,7 @@ public class GameObject {
     public int controller = 0;     // Defaults to Host
     public int uniqueID = -1;
     public  GameObject() {
+        init();
 
     }
     public GameObject(int controller) {
