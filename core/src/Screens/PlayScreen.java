@@ -95,7 +95,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         }}
     @Override
     public void processNetworkMessage(String msg) {
-        if (msg.startsWith("Connected")) {
+        if (msg.startsWith("Connected") && isPlayer1) {
+            System.out.println(msg);
             this.state = WAITING_FOR_HOST;
             try {
                 this.game.lobby.sendNetworkMessage("Set Ball:" + new ObjectMapper().writeValueAsString(this.ball));
@@ -105,6 +106,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         } else if (msg.startsWith("Update Object:")) {
             updateObject(msg.substring(14, msg.length()-1));
         } else if (msg.startsWith("Set Ball:")) {
+            System.out.println(msg);
             try {
                 GameObject recBall = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
                 this.networkedGameObjects.add(recBall);
@@ -113,6 +115,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 throw new RuntimeException(e);
             }
         } else if (msg.startsWith("SET_MODE_PLAYING")) {
+            System.out.println(msg);
             this.state = PLAYING;
         }
     }
