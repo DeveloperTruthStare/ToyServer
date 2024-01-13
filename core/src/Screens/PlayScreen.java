@@ -28,6 +28,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     private final ToyServer game;
 
 
+
+
     public int state = 0;
     private final static int WAITING_FOR_PLAYER = 0;
     private final static int WAITING_FOR_HOST = 1;
@@ -95,6 +97,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         }}
     @Override
     public void processNetworkMessage(String msg) {
+        System.out.println(msg);
+
         if (msg.startsWith("Connected") && isPlayer1) {
             System.out.println(msg);
             this.state = WAITING_FOR_HOST;
@@ -114,7 +118,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
-        } else if (msg.startsWith("SET_MODE_PLAYING")) {
+        } else if (msg.startsWith("SetPlaying")) {
             System.out.println(msg);
             this.state = PLAYING;
         }
@@ -185,7 +189,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void startGame() {
         this.state = PLAYING;
         this.ball.velocity = new Vector2(5, 0);
-        this.game.lobby.sendNetworkMessage("SET_MODE_PLAYING");
+        this.game.lobby.sendNetworkMessage("SetPlaying");
     }
 
     @Override
