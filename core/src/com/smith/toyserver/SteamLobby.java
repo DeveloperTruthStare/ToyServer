@@ -42,7 +42,6 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
         if (isConnected || isConnecting) return;
         matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 4);
         isConnecting = true;
-        System.out.println("Creating Lobby");
     }
 
     @Override
@@ -58,7 +57,6 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     @Override
     // Us Entering a lobby
     public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
-        System.out.println("Lobby entered");
         System.out.println("Entered " + matchmaking.getLobbyData(steamIDLobby, "name"));
         this.hostName = matchmaking.getLobbyData(steamIDLobby, "name");
         isConnected = true;

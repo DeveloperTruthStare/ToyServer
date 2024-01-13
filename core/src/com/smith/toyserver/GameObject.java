@@ -49,4 +49,7 @@ public class GameObject {
     public int getUniqueID() {
         return this.gameObjectID;
     }
+    public int getController() {
+        return this.controller;
+    }
 }

@@ -10,6 +10,9 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.ObjectMap;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smith.toyserver.Button;
 import com.smith.toyserver.GameObject;
 import com.smith.toyserver.IButtonCallback;
@@ -18,6 +21,8 @@ import com.smith.toyserver.ToyServer;
 
 import java.sql.Array;
 import java.util.ArrayList;
+
+
 
 public class PlayScreen implements Screen, InputProcessor, IButtonCallback, NetworkMessageProcessor {
     private final ToyServer game;
@@ -34,8 +39,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     private GameObject player;
     public boolean isPlayer1 = false;
     public ArrayList<GameObject> networkedGameObjects;
-    public GameObject createNetworkedGO() {
-        GameObject go = new GameObject(0);
+    public GameObject createNetworkedGO(int controller, int uniqueId) {
+        GameObject go = new GameObject(controller, uniqueId);
         this.networkedGameObjects.add(go);
         return go;
     }
@@ -52,8 +57,9 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void host() {
         this.game.lobby.createLobby();
-        this.player = createNetworkedGO();
-        this.ball = createNetworkedGO();
+        this.isPlayer1 = true;
+        this.player = createNetworkedGO(0, 0);
+        this.ball = createNetworkedGO(0, 2);
         player.position = new Vector2(100, 490);
         player.size = new Vector2(20, 100);
 
@@ -64,7 +70,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
 
     public void client() {
-        this.player = createNetworkedGO();
+        this.player = createNetworkedGO(1, 1);
         this.ball = new GameObject(-1);
 
         player.position = new Vector2(1820, 490);
@@ -74,20 +80,26 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         this.game.lobby.sendNetworkMessage("Connected");
         this.state = WAITING_FOR_HOST;
     }
+    public void updateObject(GameObject go) {
+        for(int i = 0; i < networkedGameObjects.size(); ++i) {
+            if (networkedGameObjects.get(i).getUniqueID() != go.getUniqueID()) return;
+            networkedGameObjects.set(i, go);
+        }
+    }
     @Override
     public void processNetworkMessage(String msg) {
-        if (msg.equals("Connected")) {
+        if (msg.startsWith("Connected")) {
             this.state = WAITING_FOR_HOST;
+        } else if (msg.startsWith("Update Object:")) {
+            try {
+                updateObject(new ObjectMapper().readValue(msg.substring(14), GameObject.class));
+            } catch (Exception ignored) {
+
+            }
         }
     }
     @Override
     public void onClick(int buttonId) {
-        switch (buttonId) {
-            case 0:
-                break;
-            case 1:
-                break;
-        }
     }
     @Override
     public void show() {
@@ -96,20 +108,25 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     @Override
     public void render(float delta) {
-        this.update(delta);
+        try {
+            this.update(delta);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         Gdx.gl.glClearColor(0.1f, 0.01f, 0.01f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         game.batch.begin();
 
-        if (this.state == WAITING_FOR_PLAYER) {
-        }
         switch (this.state) {
             case WAITING_FOR_PLAYER:
                 font.draw(game.batch, "Waiting for Another Player", (float) 1920 /2 - 300, 720);
                 break;
             case WAITING_FOR_HOST:
-                font.draw(game.batch, "Press SPACE to begin", (float) 1920 /2 - 200, 720);
+                if (isPlayer1)
+                    font.draw(game.batch, "Press SPACE to begin", (float) 1920 /2 - 200, 720);
+                else
+                    font.draw(game.batch, "Waiting for Host", (float) 1920 /2 - 200, 720);
                 break;
         }
 
@@ -122,10 +139,13 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         this.checkCollisions();
     }
 
-    public void update(float dt) {
+    public void update(float dt) throws JsonProcessingException {
         if (this.state != PLAYING) return;
         for (GameObject go : networkedGameObjects) {
             go.update(dt);
+            if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
+                this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
+            }
         }
     }
     public void checkCollisions() {
