@@ -112,7 +112,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
-
+        } else if (msg.startsWith("SET_MODE_PLAYING")) {
+            this.state = PLAYING;
         }
     }
     @Override
@@ -181,6 +182,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void startGame() {
         this.state = PLAYING;
         this.ball.velocity = new Vector2(5, 0);
+        this.game.lobby.sendNetworkMessage("SET_MODE_PLAYING");
     }
 
     @Override
