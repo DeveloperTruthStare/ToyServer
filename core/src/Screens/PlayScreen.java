@@ -43,6 +43,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void host() {
         this.game.lobby.createLobby();
+        this.gameController = new GameController();
         this.isPlayer1 = true;
         this.gameController.player1 = new GameObject(0, 0);
         this.gameController.ball = new GameObject(0, 2);
@@ -78,6 +79,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
             if (msg.startsWith("PLAYING")) {
                 this.gameController.gameState = GameState.PLAYING;
             }
+        } else if (msg.startsWith("Connected")) {
+            this.gameController.gameState = GameState.WAITING_FOR_HOST;
         }
     }
     @Override

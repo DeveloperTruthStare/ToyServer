@@ -5,7 +5,12 @@ public class GameController {
     public GameObject player2;
     public GameObject ball;
     public GameState gameState;
-    public GameController() {};
+    public GameController() {
+        player1 = new GameObject(-1, -1);
+        player2 = new GameObject(-1, -1);
+        ball = new GameObject(-1, -1);
+        gameState = GameState.WAITING_FOR_PLAYERS;
+    };
 
     public void update(float dt) {
         player1.update(dt);
