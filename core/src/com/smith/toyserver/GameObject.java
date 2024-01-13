@@ -8,7 +8,7 @@ public class GameObject {
     public Vector2 velocity;
     private ShapeRenderer shapeRenderer;
     public int controller = 0;     // Defaults to Host
-    public int gameObjectID = -1;
+    public int uniqueID = -1;
     public  GameObject() {
 
     }
@@ -19,7 +19,7 @@ public class GameObject {
 
     public GameObject(int controller, int uniqueID) {
         this.controller = controller;
-        this.gameObjectID = uniqueID;
+        this.uniqueID = uniqueID;
         init();
     }
 
@@ -48,7 +48,7 @@ public class GameObject {
                 this.position.y < go.position.y + go.size.y && this.position.y + this.size.y > go.position.y;
     }
     public int getUniqueID() {
-        return this.gameObjectID;
+        return this.uniqueID;
     }
     public int getController() {
         return this.controller;
