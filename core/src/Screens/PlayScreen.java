@@ -89,7 +89,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 networkedGameObjects.set(i, gameObject);
                 return;
             }
-            System.out.println("Need to create an object");
+            networkedGameObjects.add(gameObject);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }}
@@ -97,8 +97,22 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public void processNetworkMessage(String msg) {
         if (msg.startsWith("Connected")) {
             this.state = WAITING_FOR_HOST;
+            try {
+                this.game.lobby.sendNetworkMessage("Set Ball:" + new ObjectMapper().writeValueAsString(this.ball));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
         } else if (msg.startsWith("Update Object:")) {
             updateObject(msg.substring(14, msg.length()-1));
+        } else if (msg.startsWith("Set Ball:")) {
+            try {
+                GameObject recBall = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
+                this.networkedGameObjects.add(recBall);
+                this.ball = recBall;
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
         }
     }
     @Override

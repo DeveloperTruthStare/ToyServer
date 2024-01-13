@@ -12,6 +12,7 @@ import com.codedisaster.steamworks.SteamMatchmakingKeyValuePair;
 import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.nio.ByteBuffer;
 
