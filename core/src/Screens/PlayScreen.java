@@ -219,9 +219,15 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 break;
             case PLAYING:
                 if (keycode == Input.Keys.W) {
-                    gameController.player1.velocity = new Vector2(0, 10);
+                    if (isPlayer1)
+                        gameController.player1.velocity = new Vector2(0, 10);
+                    else
+                        gameController.player2.velocity = new Vector2(0, 10);
                 } else if (keycode == Input.Keys.S) {
-                    gameController.player1.velocity = new Vector2(0, -10);
+                    if (isPlayer1)
+                        gameController.player1.velocity = new Vector2(0, -10);
+                    else
+                        gameController.player2.velocity = new Vector2(0, -10);
                 }
                 break;
         }
