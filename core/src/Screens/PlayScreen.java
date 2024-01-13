@@ -113,9 +113,8 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         } else if (msg.startsWith("Set Ball:") && !isPlayer1) {
             System.out.println(msg);
             try {
-                GameObject recBall = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
-                this.networkedGameObjects.add(recBall);
-                this.ball = recBall;
+                this.ball = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
+                this.networkedGameObjects.add(this.ball);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
@@ -166,12 +165,11 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
 
     public void update(float dt) throws JsonProcessingException {
-        System.out.println(ball.velocity.x);
         if (this.state < WAITING_FOR_HOST) return;
         for (GameObject go : networkedGameObjects) {
             go.update(dt);
             if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
-                if (go.lastUpdate >= 20) {
+                if (go.lastUpdate >= 200) {
                     go.lastUpdate = 0;
                     this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
                 }
