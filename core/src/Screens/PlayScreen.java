@@ -31,6 +31,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     public BitmapFont font;
     public boolean isPlayer1 = false;
     public GameController gameController;
+    public int framesSinceLastNetworkSync = 0;
     public PlayScreen(ToyServer game) {
         this.game = game;
         this.game.setCurrentProcessor(this);
@@ -164,7 +165,11 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         if (this.gameController.gameState == GameState.WAITING_FOR_PLAYERS) return;
         this.gameController.update(dt);
 
-        this.game.lobby.updateGameState(this.gameController);
+        framesSinceLastNetworkSync++;
+        if (framesSinceLastNetworkSync > 1) {
+            framesSinceLastNetworkSync = 0;
+            this.game.lobby.updateGameState(this.gameController);
+        }
     }
     public void checkCollisions() {
         if (this.gameController.ball.contains(this.gameController.player1)) {
@@ -248,9 +253,15 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
                 break;
             case PLAYING:
                 if (keycode == Input.Keys.W) {
-                    gameController.player1.velocity = new Vector2(0, 0);
+                    if (isPlayer1)
+                        gameController.player1.velocity = new Vector2(0, 0);
+                    else
+                        gameController.player2.velocity = new Vector2(0, 0);
                 } else if (keycode == Input.Keys.S) {
-                    gameController.player1.velocity = new Vector2(0, -0);
+                    if (isPlayer1)
+                        gameController.player1.velocity = new Vector2(0, 0);
+                    else
+                        gameController.player2.velocity = new Vector2(0, 0);
                 }
                 break;
         }
