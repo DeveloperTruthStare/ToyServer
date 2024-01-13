@@ -73,7 +73,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void client() {
         this.player = createNetworkedGO(1, 1);
-        this.ball = new GameObject(-1, -1);
+        this.ball = null;//new GameObject(-1, -1);
 
         player.position = new Vector2(1820, 490);
         player.size = new Vector2(20, 100);
@@ -177,6 +177,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         }
     }
     public void checkCollisions() {
+        if (this.ball == null) return;
         for (GameObject go : networkedGameObjects) {
             if (go.getUniqueID() == this.ball.getUniqueID()) continue;
             if (this.ball.contains(go)) {
