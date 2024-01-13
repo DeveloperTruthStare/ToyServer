@@ -1,24 +1,33 @@
 package com.smith.toyserver;
 
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamException;
+import com.codedisaster.steamworks.SteamGameServerAPI;
 
-public class ToyServer extends ApplicationAdapter {
-	SpriteBatch batch;
-	Texture img;
+import Screens.PlayScreen;
 
-	SteamServer server;
-	SteamClient client;
+public class ToyServer extends Game {
+	public SpriteBatch batch;
+	MyInputProcessor inputProcessor;
+	Player self;
+	BitmapFont font;
+	SteamLobbyView lobbyViewController;
 
+	public SteamLobby lobby;
+	ShapeRenderer shapeRenderer;
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
-		img = new Texture("badlogic.jpg");
 
+
+		inputProcessor = new MyInputProcessor();
+		//Gdx.input.setInputProcessor(inputProcessor);
 		try {
 			SteamAPI.loadLibraries();
 			if (!SteamAPI.init()) {
@@ -27,17 +36,30 @@ public class ToyServer extends ApplicationAdapter {
 		} catch (SteamException e) {
 			System.out.println("Error Starting Steam");
 		}
+		try {
+			SteamGameServerAPI.loadLibraries();
+			if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27016, (short) 27017,
+					SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
+				System.out.println("SteamGameServerAPI init error");
+			}
+		} catch (SteamException e) {
+			System.out.println(e.getMessage());
+		}
 
-		server = new SteamServer();
+		font = new BitmapFont();
+		lobby = new SteamLobby();
+		lobbyViewController = new SteamLobbyView(lobby);
+		shapeRenderer = new ShapeRenderer();
+		setScreen(new PlayScreen(this));
 
 	}
-
+	public void startServer() {
+		this.lobby.createLobby();
+	}
 	@Override
 	public void render () {
-		ScreenUtils.clear(1, 0, 0, 1);
-		batch.begin();
-		batch.draw(img, 0, 0);
-		batch.end();
+		super.render();
+
 
 		if (SteamAPI.isSteamRunning()) {
 			SteamAPI.runCallbacks();
@@ -47,7 +69,6 @@ public class ToyServer extends ApplicationAdapter {
 	@Override
 	public void dispose () {
 		batch.dispose();
-		img.dispose();
 	}
 
 }

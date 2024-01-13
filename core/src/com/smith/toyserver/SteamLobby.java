@@ -2,6 +2,7 @@ package com.smith.toyserver;
 
 import com.codedisaster.steamworks.SteamAuth;
 import com.codedisaster.steamworks.SteamAuthTicket;
+import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamFriends;
 import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamID;
@@ -12,18 +13,32 @@ import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
 
+import java.nio.ByteBuffer;
+
 public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallback, SteamUserCallback {
-    private SteamMatchmaking matchmaking;
-    private SteamFriends steamFriends;
-    private SteamUser steamUser;
-    private String hostAddressKey = "HostAddress";
+    private final SteamMatchmaking matchmaking;
+    private final SteamFriends steamFriends;
+    private final SteamUser steamUser;
+
+    private String hostName = "";
+
+    public boolean isHosting = false;
+    public boolean isConnected = false;
+    public boolean isConnecting = false;
+    public SteamID currentSteamLobbyId;
+    public NetworkMessageProcessor msgProcessor;
     public SteamLobby() {
         steamFriends = new SteamFriends(this);
         steamUser = new SteamUser(this);
 
         matchmaking = new SteamMatchmaking(this);
-        matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 5);
+    }
 
+    public void createLobby() {
+        if (isConnected || isConnecting) return;
+        matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 4);
+        isConnecting = true;
+        System.out.println("Creating Lobby");
     }
 
     @Override
@@ -37,15 +52,27 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     }
 
     @Override
+    // Us Entering a lobby
     public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
         System.out.println("Lobby entered");
         System.out.println("Entered " + matchmaking.getLobbyData(steamIDLobby, "name"));
-
+        this.hostName = matchmaking.getLobbyData(steamIDLobby, "name");
+        isConnected = true;
+        isConnecting = false;
+        this.currentSteamLobbyId = steamIDLobby;
     }
 
+    public void sendNetworkMessage(String message) {
+        this.matchmaking.sendLobbyChatMsg(currentSteamLobbyId, message);
+    }
+    public void disconnect() {
+        matchmaking.leaveLobby(currentSteamLobbyId);
+        this.isConnected = false;
+        this.isConnecting = false;
+    }
     @Override
     public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
-
+        System.out.println("Lobby Data Updated");
     }
 
     @Override
@@ -53,8 +80,22 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     }
 
+
     @Override
     public void onLobbyChatMessage(SteamID steamIDLobby, SteamID steamIDUser, SteamMatchmaking.ChatEntryType entryType, int chatID) {
+        SteamMatchmaking.ChatEntry chatEntry = new SteamMatchmaking.ChatEntry();
+        ByteBuffer buffer = ByteBuffer.allocateDirect(1024);
+        try {
+            int thing = matchmaking.getLobbyChatEntry(steamIDLobby, chatID, chatEntry, buffer);
+
+            byte[] bytes = new byte[thing];
+            buffer.get(bytes);
+            String msg = new String(bytes);
+            msgProcessor.processNetworkMessage(msg);
+
+        } catch (SteamException e) {
+            System.out.println(e.getMessage());
+        }
 
     }
 
@@ -74,10 +115,15 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
+        System.out.println("Lobby Created: " + steamIDLobby);
+        String hostAddressKey = "HostAddress";
         matchmaking.setLobbyData(steamIDLobby, new SteamMatchmakingKeyValuePair(hostAddressKey, steamUser.getSteamID().toString()));
-        matchmaking.setLobbyData(steamIDLobby, "name", steamFriends.getPersonaName() + "'s Lobby");
-        System.out.println("Lobby Created");
-
+        matchmaking.setLobbyData(steamIDLobby, "name", steamFriends.getPersonaName());
+        this.hostName = steamFriends.getPersonaName();
+        this.isConnected = true;
+        this.isHosting = true;
+        this.isConnecting = false;
+        currentSteamLobbyId = steamIDLobby;
     }
 
     @Override
@@ -144,5 +190,9 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     @Override
     public void onEncryptedAppTicket(SteamResult result) {
 
+    }
+
+    public String getHostName() {
+        return this.hostName;
     }
 }

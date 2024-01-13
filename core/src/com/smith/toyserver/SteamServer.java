@@ -19,7 +19,7 @@ public class SteamServer implements SteamGameServerCallback {
             System.out.println("initSteamGameServer error");
         }
     }
-
+    SteamLobby lobby;
     private void initSteamGameServer() throws SteamException {
         SteamGameServerAPI.loadLibraries();
         if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27016, (short) 27017,
@@ -31,10 +31,11 @@ public class SteamServer implements SteamGameServerCallback {
         gameServer.setGameDescription("Toy Server");
         gameServer.logOnAnonymous();
 
-        SteamLobby lobby = new SteamLobby();
-
+        lobby = new SteamLobby();
     }
-
+    public void startServer() {
+        this.lobby.createLobby();
+    }
     @Override
     public void onValidateAuthTicketResponse(SteamID steamID, SteamAuth.AuthSessionResponse authSessionResponse, SteamID ownerSteamID) {
 
@@ -83,5 +84,9 @@ public class SteamServer implements SteamGameServerCallback {
     @Override
     public void onComputeNewPlayerCompatibilityResult(SteamResult result, int playersThatDontLikeCandidate, int playersThatCandidateDoesntLike, int clanPlayersThatDontLikeCandidate, SteamID steamIDCandidate) {
 
+    }
+
+    public SteamLobby getLobby() {
+        return this.lobby;
     }
 }
