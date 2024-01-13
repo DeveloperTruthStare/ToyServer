@@ -105,7 +105,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
             }
         } else if (msg.startsWith("Update Object:")) {
             updateObject(msg.substring(14, msg.length()-1));
-        } else if (msg.startsWith("Set Ball:")) {
+        } else if (msg.startsWith("Set Ball:") && !isPlayer1) {
             System.out.println(msg);
             try {
                 GameObject recBall = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
