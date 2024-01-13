@@ -18,12 +18,12 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     private SteamUser steamUser;
     private String hostAddressKey = "HostAddress";
     public SteamLobby() {
-        System.out.println("HI from SteamLobby");
         steamFriends = new SteamFriends(this);
         steamUser = new SteamUser(this);
 
         matchmaking = new SteamMatchmaking(this);
         matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 5);
+
     }
 
     @Override
@@ -38,6 +38,8 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
+        System.out.println("Lobby entered");
+        System.out.println("Entered " + matchmaking.getLobbyData(steamIDLobby, "name"));
 
     }
 
@@ -58,8 +60,6 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onLobbyGameCreated(SteamID steamIDLobby, SteamID steamIDGameServer, int ip, short port) {
-        matchmaking.setLobbyData(steamIDLobby, new SteamMatchmakingKeyValuePair(hostAddressKey, steamUser.getSteamID().toString()));
-        matchmaking.setLobbyData(steamIDLobby, "name", steamFriends.getPersonaName() + "'s Lobby");
     }
 
     @Override
@@ -74,6 +74,9 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
+        matchmaking.setLobbyData(steamIDLobby, new SteamMatchmakingKeyValuePair(hostAddressKey, steamUser.getSteamID().toString()));
+        matchmaking.setLobbyData(steamIDLobby, "name", steamFriends.getPersonaName() + "'s Lobby");
+        System.out.println("Lobby Created");
 
     }
 
@@ -99,7 +102,8 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onGameLobbyJoinRequested(SteamID steamIDLobby, SteamID steamIDFriend) {
-
+        System.out.println("Lobby join request");
+        matchmaking.joinLobby(steamIDLobby);
     }
 
     @Override
@@ -114,7 +118,7 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
 
     @Override
     public void onGameRichPresenceJoinRequested(SteamID steamIDFriend, String connect) {
-
+        System.out.println("Rich Presence Join Request");
     }
 
     @Override
