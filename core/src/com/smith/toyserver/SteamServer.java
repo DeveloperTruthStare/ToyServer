@@ -31,10 +31,6 @@ public class SteamServer implements SteamGameServerCallback {
         gameServer.setGameDescription("Toy Server");
         gameServer.logOnAnonymous();
 
-        lobby = new SteamLobby();
-    }
-    public void startServer() {
-        this.lobby.createLobby();
     }
     @Override
     public void onValidateAuthTicketResponse(SteamID steamID, SteamAuth.AuthSessionResponse authSessionResponse, SteamID ownerSteamID) {

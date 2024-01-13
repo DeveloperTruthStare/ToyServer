@@ -27,7 +27,9 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
     public boolean isConnecting = false;
     public SteamID currentSteamLobbyId;
     public NetworkMessageProcessor msgProcessor;
-    public SteamLobby() {
+    private ToyServer game;
+    public SteamLobby(ToyServer game) {
+        this.game = game;
         steamFriends = new SteamFriends(this);
         steamUser = new SteamUser(this);
 
@@ -60,6 +62,7 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
         isConnected = true;
         isConnecting = false;
         this.currentSteamLobbyId = steamIDLobby;
+        // Call main and tell them we joined a lobby
     }
 
     public void sendNetworkMessage(String message) {
@@ -96,7 +99,6 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
         } catch (SteamException e) {
             System.out.println(e.getMessage());
         }
-
     }
 
     @Override
