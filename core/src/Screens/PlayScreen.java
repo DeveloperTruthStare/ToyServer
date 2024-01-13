@@ -82,9 +82,11 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
     public void updateObject(GameObject go) {
         for(int i = 0; i < networkedGameObjects.size(); ++i) {
-            if (networkedGameObjects.get(i).getUniqueID() != go.getUniqueID()) return;
+            if (networkedGameObjects.get(i).getUniqueID() != go.getUniqueID()) continue;
             networkedGameObjects.set(i, go);
+            return;
         }
+        System.out.println("Need to create an object");
     }
     @Override
     public void processNetworkMessage(String msg) {
@@ -140,7 +142,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
 
     public void update(float dt) throws JsonProcessingException {
-        if (this.state != PLAYING) return;
+        if (this.state < WAITING_FOR_HOST) return;
         for (GameObject go : networkedGameObjects) {
             go.update(dt);
             if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
@@ -150,7 +152,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
     public void checkCollisions() {
         for (GameObject go : networkedGameObjects) {
-            if (go.getUniqueID() == this.ball.getUniqueID()) return;
+            if (go.getUniqueID() == this.ball.getUniqueID()) continue;
             if (this.ball.contains(go)) {
                 // move the ball away
                 if (this.ball.position.x > go.position.x)
