@@ -48,10 +48,10 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
         font = new BitmapFont();
         font.getData().setScale(5);
-
     }
 
     public void host() {
+        this.game.lobby.createLobby();
         this.player = createNetworkedGO();
         this.ball = createNetworkedGO();
         player.position = new Vector2(100, 490);
@@ -69,9 +69,16 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
         player.position = new Vector2(1820, 490);
         player.size = new Vector2(20, 100);
+
+        // Send message that we've connected
+        this.game.lobby.sendNetworkMessage("Connected");
+        this.state = WAITING_FOR_HOST;
     }
     @Override
     public void processNetworkMessage(String msg) {
+        if (msg.equals("Connected")) {
+            this.state = WAITING_FOR_HOST;
+        }
     }
     @Override
     public void onClick(int buttonId) {

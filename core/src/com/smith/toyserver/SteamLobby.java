@@ -15,6 +15,8 @@ import com.codedisaster.steamworks.SteamUserCallback;
 
 import java.nio.ByteBuffer;
 
+import Screens.PlayScreen;
+
 public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallback, SteamUserCallback {
     private final SteamMatchmaking matchmaking;
     private final SteamFriends steamFriends;
@@ -63,6 +65,10 @@ public class SteamLobby implements SteamMatchmakingCallback, SteamFriendsCallbac
         isConnecting = false;
         this.currentSteamLobbyId = steamIDLobby;
         // Call main and tell them we joined a lobby
+        PlayScreen playScreen = new PlayScreen(this.game);
+        playScreen.client();
+        this.game.swapScreen(playScreen);
+
     }
 
     public void sendNetworkMessage(String message) {
