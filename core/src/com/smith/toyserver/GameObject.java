@@ -1,16 +1,17 @@
 package com.smith.toyserver;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector2;
-
+import com.smith.toyserver.utils.Vector2;
 public class GameObject {
     public Vector2 position;
     public Vector2 size;
     public Vector2 velocity;
     private ShapeRenderer shapeRenderer;
-    private int controller = 0;     // Defaults to Host
-    private int gameObjectID = -1;
+    public int controller = 0;     // Defaults to Host
+    public int gameObjectID = -1;
+    public  GameObject() {
 
+    }
     public GameObject(int controller) {
         this.controller = controller;
         init();

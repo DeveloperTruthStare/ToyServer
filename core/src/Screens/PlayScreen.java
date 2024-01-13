@@ -9,7 +9,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.math.Vector2;
+import com.smith.toyserver.utils.Vector2;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,7 +66,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         ball.position = new Vector2((float) 1920 /2 - 5, (float) 1080 /2 - 5);
         ball.size = new Vector2(10, 10);
 
-        ball.velocity = new Vector2(5, 0);
+        ball.velocity = new Vector2(0, 0);
     }
 
     public void client() {
@@ -80,24 +80,25 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         this.game.lobby.sendNetworkMessage("Connected");
         this.state = WAITING_FOR_HOST;
     }
-    public void updateObject(GameObject go) {
-        for(int i = 0; i < networkedGameObjects.size(); ++i) {
-            if (networkedGameObjects.get(i).getUniqueID() != go.getUniqueID()) continue;
-            networkedGameObjects.set(i, go);
-            return;
-        }
-        System.out.println("Need to create an object");
-    }
+    public void updateObject(String json) {
+        try {
+            GameObject gameObject = new ObjectMapper().readValue(json, GameObject.class);
+
+            for(int i = 0; i < networkedGameObjects.size(); ++i) {
+                if (networkedGameObjects.get(i).getUniqueID() != gameObject.getUniqueID()) continue;
+                networkedGameObjects.set(i, gameObject);
+                return;
+            }
+            System.out.println("Need to create an object");
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }}
     @Override
     public void processNetworkMessage(String msg) {
         if (msg.startsWith("Connected")) {
             this.state = WAITING_FOR_HOST;
         } else if (msg.startsWith("Update Object:")) {
-            try {
-                updateObject(new ObjectMapper().readValue(msg.substring(14), GameObject.class));
-            } catch (Exception ignored) {
-
-            }
+            updateObject(msg.substring(14, msg.length()-1));
         }
     }
     @Override
@@ -165,6 +166,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void startGame() {
         this.state = PLAYING;
+        this.ball.velocity = new Vector2(5, 0);
     }
 
     @Override
