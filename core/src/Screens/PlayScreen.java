@@ -98,7 +98,6 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         }}
     @Override
     public void processNetworkMessage(String msg) {
-        System.out.println(msg);
 
         if (msg.startsWith("Connected") && isPlayer1) {
             System.out.println(msg);
@@ -171,6 +170,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
     }
 
     public void update(float dt) throws JsonProcessingException {
+        System.out.println(this.ball.toString());
         if (this.state < WAITING_FOR_HOST) return;
         for (GameObject go : networkedGameObjects) {
             go.update(dt);

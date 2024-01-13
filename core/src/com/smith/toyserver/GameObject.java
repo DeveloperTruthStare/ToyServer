@@ -59,4 +59,8 @@ public class GameObject {
     public int getController() {
         return this.controller;
     }
+
+    public String toString() {
+        return "controller: " + controller + ", uniqueID: " + uniqueID;
+    }
 }
