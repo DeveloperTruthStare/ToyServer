@@ -12,6 +12,7 @@ public class GameObject {
     private ShapeRenderer shapeRenderer;
     public int controller = 0;     // Defaults to Host
     public int uniqueID = -1;
+    public int lastUpdate = 0;
     public  GameObject() {
         init();
 
@@ -44,6 +45,7 @@ public class GameObject {
 
     public void update(float dt) {
         // Update
+        this.lastUpdate += 1;
         this.position = new Vector2(this.position.x + this.velocity.x, this.position.y + this.velocity.y);
     }
 

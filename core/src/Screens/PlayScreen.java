@@ -169,7 +169,10 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         for (GameObject go : networkedGameObjects) {
             go.update(dt);
             if ((go.getController() == 0 && isPlayer1) || (go.getController() == 1 && !isPlayer1)) {
-                this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
+                if (go.lastUpdate >= 10) {
+                    go.lastUpdate = 0;
+                    this.game.lobby.sendNetworkMessage("Update Object:" + new ObjectMapper().writeValueAsString(go));
+                }
             }
         }
     }
