@@ -73,7 +73,7 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
 
     public void client() {
         this.player = createNetworkedGO(1, 1);
-        this.ball = null;//new GameObject(-1, -1);
+        this.ball = new GameObject(-1, -1);
 
         player.position = new Vector2(1820, 490);
         player.size = new Vector2(20, 100);
@@ -113,7 +113,13 @@ public class PlayScreen implements Screen, InputProcessor, IButtonCallback, Netw
         } else if (msg.startsWith("Set Ball:") && !isPlayer1) {
             System.out.println(msg);
             try {
-                this.ball = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
+                GameObject newGo = new ObjectMapper().readValue(msg.substring(9, msg.length()-1), GameObject.class);
+                this.ball.velocity = newGo.velocity;
+                this.ball.position = newGo.position;
+                this.ball.controller = newGo.controller;
+                this.ball.uniqueID = newGo.uniqueID;
+                this.ball.size = newGo.size;
+
                 this.networkedGameObjects.add(this.ball);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
