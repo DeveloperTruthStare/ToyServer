@@ -7,6 +7,7 @@ import com.codedisaster.steamworks.SteamGameServer;
 import com.codedisaster.steamworks.SteamGameServerAPI;
 import com.codedisaster.steamworks.SteamGameServerCallback;
 import com.codedisaster.steamworks.SteamID;
+import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamResult;
 
 public class SteamServer implements SteamGameServerCallback {
@@ -29,6 +30,8 @@ public class SteamServer implements SteamGameServerCallback {
         gameServer.setProduct("ToyServer");
         gameServer.setGameDescription("Toy Server");
         gameServer.logOnAnonymous();
+
+        SteamLobby lobby = new SteamLobby();
 
     }
 
