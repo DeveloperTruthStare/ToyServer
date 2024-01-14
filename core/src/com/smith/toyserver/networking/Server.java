@@ -38,7 +38,7 @@ public class Server {
         @Override
         public void run() {
             while(mainThread.isAlive()) {
-                SteamGameServerAPI.runCallbacks();
+                //SteamGameServerAPI.runCallbacks();
 
                 try {
                     processUpdate();
@@ -107,7 +107,8 @@ public class Server {
         @Override
         public void onP2PSessionRequest(SteamID steamIDRemote) {
             System.out.println("P2P connection requested by userID " + steamIDRemote.getAccountID());
-            networking.acceptP2PSessionWithUser(steamIDRemote);
+            serverNetworking.acceptP2PSessionWithUser(steamIDRemote);
+            //networking.acceptP2PSessionWithUser(steamIDRemote);
         }
     };
     private SteamMatchmakingCallback matchmakingCallback = new SteamMatchmakingCallback() {
@@ -122,30 +123,16 @@ public class Server {
         @Override
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
             currentLobby = steamIDLobby;
+
             // get host steamID
             int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostSteamID"));
+
             int friends = steamFriends.getFriendCount(SteamFriends.FriendFlags.Immediate);
+
             for(int i = 0; i < friends; ++i) {
                 SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
                 if (friend.getAccountID() == accountId) {
                     hostSteamID = friend;
-
-                    int sendBufferCapacity = 4096;
-                    ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
-                    packetSendBuffer.clear(); // pos=0, limit=cap
-
-                    String msg = "Hello World";
-                    byte[] bytes = msg.getBytes();
-                    packetSendBuffer.put(bytes);
-
-                    packetSendBuffer.flip(); // limit=pos, pos=0
-                    System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
-                    try {
-                        networking.sendP2PPacket(hostSteamID, packetSendBuffer,
-                                SteamNetworking.P2PSend.Unreliable, defaultChannel);
-                    } catch (SteamException e) {
-                        throw new RuntimeException(e);
-                    }
                     return;
                 }
             }
@@ -256,6 +243,7 @@ public class Server {
         }
     };
     private SteamNetworking networking;
+    private SteamGameServerNetworking serverNetworking;
     private SteamMatchmaking matchmaking;
     private SteamFriends steamFriends;
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
@@ -267,6 +255,7 @@ public class Server {
         this.gameManager = gameManager;
 
         // Load SteamGameServerAPI
+        /*
         try {
             SteamGameServerAPI.loadLibraries();
             if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27016, (short) 27017,
@@ -276,16 +265,17 @@ public class Server {
         } catch (SteamException e) {
             throw new RuntimeException(e);
         }
-
+*/
+        //serverNetworking = new SteamGameServerNetworking(peer2peerCallback);
         networking = new SteamNetworking(peer2peerCallback);
+        //serverNetworking.allowP2PPacketRelay(true);
         networking.allowP2PPacketRelay(true);
 
-        //steamGameServerNetworking = new SteamGameServerNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(steamFriendsCallback);
         user = new SteamUser(steamUserCallback);
         SteamID localUser = user.getSteamID();
-        System.out.println("Local User: " + localUser);
+        System.out.println("Local User: " + localUser.getAccountID());
     }
 
     public void start() {
@@ -304,12 +294,32 @@ public class Server {
 
     public void processInput(String input) throws SteamException {
         System.out.println(input);
+        if (input.startsWith("test")) {
+
+            int sendBufferCapacity = 4096;
+            ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
+            packetSendBuffer.clear(); // pos=0, limit=cap
+
+            String msg = "Hello World";
+            byte[] bytes = msg.getBytes();
+            packetSendBuffer.put(bytes);
+
+            packetSendBuffer.flip(); // limit=pos, pos=0
+            System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
+            try {
+                networking.sendP2PPacket(hostSteamID, packetSendBuffer,
+                        SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
+            } catch (SteamException e) {
+                throw new RuntimeException(e);
+            }
+
+        }
     }
     public void processUpdate() throws SteamException {
         // Check if a packet has been recv
         int[] packetSize = new int[1];
         if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-            System.out.println(packetSize[0]);
+
             SteamID steamIDSender = new SteamID();
 
             int readBufferCapacity = 4096;
@@ -318,6 +328,13 @@ public class Server {
             if (packetSize[0] > packetReadBuffer.capacity()) {
                 throw new SteamException("incoming packet larger than read buffer can handle");
             }
+
+
+            SteamNetworking.P2PSessionState thing = new SteamNetworking.P2PSessionState();
+            System.out.println(thing.isUsingRelay());
+            boolean b = networking.getP2PSessionState(steamIDSender, thing);
+            System.out.println();
+
 
             // Clear previous message
             packetReadBuffer.clear();
