@@ -132,6 +132,7 @@ public class Server {
                     int sendBufferCapacity = 4096;
                     ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
                     packetSendBuffer.clear(); // pos=0, limit=cap
+
                     String[] params = "Hello, World".split(" ");
 
                     for (int j = 1; i < params.length; i++) {
@@ -141,9 +142,10 @@ public class Server {
                         }
                         packetSendBuffer.put(bytes);
                     }
+                    System.out.println(packetSendBuffer.toString());
 
                     packetSendBuffer.flip(); // limit=pos, pos=0
-
+                    System.out.println(packetSendBuffer);
                     try {
                         networking.sendP2PPacket(hostSteamID, packetSendBuffer,
                                 SteamNetworking.P2PSend.Unreliable, defaultChannel);
@@ -310,6 +312,7 @@ public class Server {
         // Check if a packet has been recv
         int[] packetSize = new int[1];
         if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
+            System.out.println(packetSize);
             SteamID steamIDSender = new SteamID();
 
             int readBufferCapacity = 4096;
@@ -328,7 +331,7 @@ public class Server {
 
             // Error checking
             if (packetReadSize == 0) {
-                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none");
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender);
             } else if (packetReadSize < packetSize[0]) {
                 System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
             }
