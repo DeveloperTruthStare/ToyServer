@@ -4,6 +4,8 @@ import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamAuth;
 import com.codedisaster.steamworks.SteamAuthTicket;
 import com.codedisaster.steamworks.SteamException;
+import com.codedisaster.steamworks.SteamFriends;
+import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamGameServerAPI;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
@@ -117,6 +119,11 @@ public class Server {
         }
         @Override
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
+            System.out.println("On Lobby Enter");
+            System.out.println(steamIDLobby);
+            System.out.println(chatPermissions);
+            System.out.println(blocked);
+            System.out.println(response);
 
         }
         @Override
@@ -158,8 +165,57 @@ public class Server {
 
         }
     };
+    private SteamFriendsCallback steamFriendsCallback = new SteamFriendsCallback() {
+        @Override
+        public void onSetPersonaNameResponse(boolean success, boolean localSuccess, SteamResult result) {
+
+        }
+
+        @Override
+        public void onPersonaStateChange(SteamID steamID, SteamFriends.PersonaChange change) {
+            /*
+            System.out.println("Persona State Change");
+            System.out.println(steamID);
+            System.out.println(change);
+            */
+        }
+
+        @Override
+        public void onGameOverlayActivated(boolean active) {
+
+        }
+
+        @Override
+        public void onGameLobbyJoinRequested(SteamID steamIDLobby, SteamID steamIDFriend) {
+            System.out.println("Game Lobby Join Requested");
+            System.out.println(steamIDLobby);
+            System.out.println(steamIDFriend);
+            matchmaking.joinLobby(steamIDLobby);
+        }
+
+        @Override
+        public void onAvatarImageLoaded(SteamID steamID, int image, int width, int height) {
+
+        }
+
+        @Override
+        public void onFriendRichPresenceUpdate(SteamID steamIDFriend, int appID) {
+
+        }
+
+        @Override
+        public void onGameRichPresenceJoinRequested(SteamID steamIDFriend, String connect) {
+
+        }
+
+        @Override
+        public void onGameServerChangeRequested(String server, String password) {
+
+        }
+    };
     private SteamNetworking networking;
     private SteamMatchmaking matchmaking;
+    private SteamFriends steamFriends;
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
 
     private GameManager gameManager;
@@ -179,6 +235,7 @@ public class Server {
 
         networking = new SteamNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
+        steamFriends = new SteamFriends(steamFriendsCallback);
     }
 
     public void start() {
