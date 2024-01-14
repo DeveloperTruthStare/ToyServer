@@ -40,7 +40,8 @@ public class GameObject {
     public void syncWith(GameObject go) {
         if (go.velocity.x != this.velocity.x || go.velocity.y != this.velocity.y)
             this.velocity = new Vector2(go.velocity.x, go.velocity.y);
-        if (Math.abs(go.position.x - this.position.x) > 20 || Math.abs(go.position.y - this.position.y) > 20) {
+        if (Math.abs(go.position.x - this.position.x) > 2 || Math.abs(go.position.y - this.position.y) > 2) {
+            System.out.println("Updating position");
             this.position = new Vector2(go.position.x, go.position.y);
         }
     }

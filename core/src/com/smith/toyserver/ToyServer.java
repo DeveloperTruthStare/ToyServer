@@ -392,7 +392,6 @@ public class ToyServer extends Game {
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
 		}
-		System.out.println("Pack Sent " + messageCharset.decode(packetSendBuffer).toString());
 	}
 	public void sendTo(SteamID dest, Vector2 velocity) {
 		String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
@@ -402,7 +401,6 @@ public class ToyServer extends Game {
 		// Check if a packet has been recv
 		int[] packetSize = new int[1];
 		if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-			System.out.println("Message to recv");
 			SteamID steamIDSender = new SteamID();
 
 			if (packetSize[0] > packetReadBuffer.capacity()) {
@@ -425,13 +423,11 @@ public class ToyServer extends Game {
 
 			if (packetReadSize > 0) {
 				int bytesReceived = packetReadBuffer.limit();
-				System.out.println("Rcv packet: userID=" + steamIDSender.getAccountID() + ", " + bytesReceived + " bytes");
 
 				byte[] bytes = new byte[bytesReceived];
 				packetReadBuffer.get(bytes);
 
 				String message = new String(bytes, messageCharset);
-				System.out.println("Rcv message: \"" + message + "\"");
 				processMessage(message);
 			}
 		}
