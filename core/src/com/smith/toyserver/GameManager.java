@@ -252,31 +252,24 @@ public class GameManager {
     private GameServer server;
     private GameClient client;
     public SteamNetworking networking;
-    public GameManager(SteamID hostId) {
+
+    public GameManager(boolean isHost) {
+        this.host = isHost;
+
         networking = new SteamNetworking(peer2peerCallback);
         networking.allowP2PPacketRelay(true);
 
-        this.host = false;
-        this.hostId = hostId;
-
-        // Start Client Stuff
-        client = new GameClient(Thread.currentThread());
-        Thread clientThread = new Thread(client);
-        clientThread.start();
-
-        // Initialize Game State
-        gameState = new GameState();
-    }
-    public GameManager() {
-        networking = new SteamNetworking(peer2peerCallback);
-        networking.allowP2PPacketRelay(true);
-
-        this.host = true;
-
-        // Start Steam Server Stuff
-        server = new GameServer(Thread.currentThread());
-        Thread serverThread = new Thread(server);
-        serverThread.start();
+        if (this.host) {
+            // Start Steam Server Stuff
+            server = new GameServer(Thread.currentThread());
+            Thread serverThread = new Thread(server);
+            serverThread.start();
+        } else {
+            // Start Client Stuff
+            client = new GameClient(Thread.currentThread());
+            Thread clientThread = new Thread(client);
+            clientThread.start();
+        }
 
         // Initialize Game State
         gameState = new GameState();
@@ -310,6 +303,9 @@ public class GameManager {
         } else if (gameState.ball.contains(gameState.player2)) {
             gameState.ball.velocity = new Vector2(-5, 0);
         }
+    }
+    public void setHostId(SteamID host) {
+        this.hostId = host;
     }
 
     public void updateGameStateFromServer(GameState serverState) {

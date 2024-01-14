@@ -18,10 +18,10 @@ public class GameObject {
         this.position = new Vector2(0, 0);
         this.size = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
-        shapeRenderer = new ShapeRenderer();
     }
 
     public void draw() {
+        if (shapeRenderer == null) shapeRenderer = new ShapeRenderer();
         // Assume batch is ended
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(1, 1, 1, 1);

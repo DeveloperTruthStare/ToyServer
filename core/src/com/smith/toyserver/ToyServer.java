@@ -101,17 +101,17 @@ public class ToyServer extends Game {
 		}
 		@Override
 		public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
-			int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostId"));
+			int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostAccountId"));
 			int friendCount = steamFriends.getFriendCount(SteamFriends.FriendFlags.Immediate);
 
 			for(int i = 0; i < friendCount; ++i) {
 				SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
 				if (friend.getAccountID() == accountId) {
-					SteamID hostSteamId = friend;
-					openGameScreen(new GameScreen(new GameManager(hostSteamId)));
+					gameManager = new GameManager(false);
+					openGameScreen(new GameScreen(gameManager));
+					gameManager.setHostId(friend);
 				}
 			}
-
 		}
 		@Override
 		public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
@@ -140,6 +140,8 @@ public class ToyServer extends Game {
 		@Override
 		public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
 			matchmaking.setLobbyData(steamIDLobby, "hostAccountId", String.valueOf(user.getSteamID().getAccountID()));
+			gameManager = new GameManager(false);
+			openGameScreen(new GameScreen(gameManager));
 		}
 		@Override
 		public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -214,6 +216,7 @@ public class ToyServer extends Game {
 	private SteamMatchmaking matchmaking;
 	private SteamFriends steamFriends;
 	private SteamUser user;
+	public GameManager gameManager;
 	@Override
 	public void create () {
 		matchmaking = new SteamMatchmaking(matchmakingCallback);
@@ -229,7 +232,8 @@ public class ToyServer extends Game {
 	public void startServer() {
 		System.out.println("Starting Server");
 		matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 2);
-		openGameScreen(new GameScreen(new GameManager()));
+		gameManager = new GameManager(true);
+		openGameScreen(new GameScreen(gameManager));
 	}
 	private void openGameScreen(GameScreen gameScreen) {
 		setScreen(gameScreen);
