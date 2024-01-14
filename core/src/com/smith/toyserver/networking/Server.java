@@ -28,8 +28,17 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
-    private static final int defaultChannel = 0;
+    private static final int defaultChannel = 1;
     private static final Charset messageCharset = StandardCharsets.UTF_8;
+
+    private static final int readBufferCapacity = 4096;
+    private static final int sendBufferCapacity = 4096;
+
+    private ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
+    private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
+
+
+
     private class GameServer implements  Runnable {
         private final Thread mainThread;
         public GameServer(Thread mainThread) {
@@ -38,7 +47,7 @@ public class Server {
         @Override
         public void run() {
             while(mainThread.isAlive()) {
-                //SteamGameServerAPI.runCallbacks();
+                SteamGameServerAPI.runCallbacks();
 
                 try {
                     processUpdate();
@@ -46,12 +55,12 @@ public class Server {
                     throw new RuntimeException(e);
                 }
 
-                try {
+  /*              try {
                     // run about 40 times a second
-                    Thread.sleep(25);
+//                    Thread.sleep(16);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
-                }
+                }*/
             }
         }
     }
@@ -107,8 +116,7 @@ public class Server {
         @Override
         public void onP2PSessionRequest(SteamID steamIDRemote) {
             System.out.println("P2P connection requested by userID " + steamIDRemote.getAccountID());
-            serverNetworking.acceptP2PSessionWithUser(steamIDRemote);
-            //networking.acceptP2PSessionWithUser(steamIDRemote);
+            networking.acceptP2PSessionWithUser(steamIDRemote);
         }
     };
     private SteamMatchmakingCallback matchmakingCallback = new SteamMatchmakingCallback() {
@@ -139,9 +147,6 @@ public class Server {
         }
         @Override
         public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
-            // Called when lobby created
-            System.out.println("Lobby Data Update");
-            System.out.println(steamIDMember);
         }
         @Override
         public void onLobbyChatUpdate(SteamID steamIDLobby, SteamID steamIDUserChanged, SteamID steamIDMakingChange, SteamMatchmaking.ChatMemberStateChange stateChange) {
@@ -167,6 +172,7 @@ public class Server {
         public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
             currentLobby = steamIDLobby;
             matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID().getAccountID()));
+            System.out.println("set  hostSteamID");
         }
         @Override
         public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -221,15 +227,24 @@ public class Server {
 
         }
     };
-    private SteamUserCallback steamUserCallback = new SteamUserCallback() {
+    private SteamUserCallback userCallback = new SteamUserCallback() {
         @Override
         public void onAuthSessionTicket(SteamAuthTicket authTicket, SteamResult result) {
 
         }
 
         @Override
-        public void onValidateAuthTicket(SteamID steamID, SteamAuth.AuthSessionResponse authSessionResponse, SteamID ownerSteamID) {
+        public void onValidateAuthTicket(SteamID steamID,
+                                         SteamAuth.AuthSessionResponse authSessionResponse,
+                                         SteamID ownerSteamID) {
 
+            System.out.println("Auth session response for userID " + steamID.getAccountID() + ": " +
+                    authSessionResponse.name() + ", borrowed=" + (steamID.equals(ownerSteamID) ? "yes" : "no"));
+
+            if (authSessionResponse == SteamAuth.AuthSessionResponse.AuthTicketCanceled) {
+                // ticket owner has cancelled the ticket, end the session
+                endAuthSession();
+            }
         }
 
         @Override
@@ -243,37 +258,45 @@ public class Server {
         }
     };
     private SteamNetworking networking;
-    private SteamGameServerNetworking serverNetworking;
     private SteamMatchmaking matchmaking;
     private SteamFriends steamFriends;
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
     private SteamID currentLobby = null;
     private SteamUser user;
     private SteamID hostSteamID;
+
+    private SteamAuthTicket userAuthTicket;
+    private ByteBuffer userAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private SteamID remoteAuthUser;
+    private ByteBuffer remoteAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private final byte[] AUTH = "AUTH".getBytes(Charset.defaultCharset());
+
+
+
     private GameManager gameManager;
     public Server(GameManager gameManager) {
         this.gameManager = gameManager;
 
         // Load SteamGameServerAPI
-        /*
         try {
             SteamGameServerAPI.loadLibraries();
-            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27016, (short) 27017,
+            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27010, (short) 27011,
                     SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
                 System.out.println("SteamGameServerAPI.init() failed");
             }
         } catch (SteamException e) {
             throw new RuntimeException(e);
         }
-*/
-        //serverNetworking = new SteamGameServerNetworking(peer2peerCallback);
+
         networking = new SteamNetworking(peer2peerCallback);
-        //serverNetworking.allowP2PPacketRelay(true);
         networking.allowP2PPacketRelay(true);
 
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(steamFriendsCallback);
-        user = new SteamUser(steamUserCallback);
+
+        user = new SteamUser(userCallback);
         SteamID localUser = user.getSteamID();
         System.out.println("Local User: " + localUser.getAccountID());
     }
@@ -296,8 +319,6 @@ public class Server {
         System.out.println(input);
         if (input.startsWith("test")) {
 
-            int sendBufferCapacity = 4096;
-            ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
             packetSendBuffer.clear(); // pos=0, limit=cap
 
             String msg = "Hello World";
@@ -322,24 +343,12 @@ public class Server {
 
             SteamID steamIDSender = new SteamID();
 
-            int readBufferCapacity = 4096;
-            ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
-
             if (packetSize[0] > packetReadBuffer.capacity()) {
                 throw new SteamException("incoming packet larger than read buffer can handle");
             }
 
-
-            SteamNetworking.P2PSessionState thing = new SteamNetworking.P2PSessionState();
-            System.out.println(thing.isUsingRelay());
-            boolean b = networking.getP2PSessionState(steamIDSender, thing);
-            System.out.println();
-
-
             // Clear previous message
             packetReadBuffer.clear();
-            // this isn't needed actually, buffer passed in can be larger than message to read
-            packetReadBuffer.limit(packetSize[0]);
 
             int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
 
@@ -382,4 +391,34 @@ public class Server {
         }
     }
 
+    private void broadcastAuthTicket() throws SteamException {
+        if (userAuthTicket == null || !userAuthTicket.isValid()) {
+            System.out.println("Error: won't broadcast nil auth ticket");
+            return;
+        }
+
+        for (Map.Entry<Integer, SteamID> remoteUser : remoteUserIDs.entrySet()) {
+
+            System.out.println("Send auth to remote user: " + remoteUser.getKey() +
+                    "[hash: " + userAuthTicketData.hashCode() + "]");
+
+            packetSendBuffer.clear(); // pos=0, limit=cap
+
+            packetSendBuffer.put(AUTH); // magic bytes
+            packetSendBuffer.put(userAuthTicketData);
+
+            userAuthTicketData.flip(); // limit=pos, pos=0
+            packetSendBuffer.flip(); // limit=pos, pos=0
+
+            networking.sendP2PPacket(remoteUser.getValue(), packetSendBuffer,
+                    SteamNetworking.P2PSend.Reliable, defaultChannel);
+        }
+    }
+    private void endAuthSession() {
+        if (remoteAuthUser != null) {
+            System.out.println("End auth session with user: " + remoteAuthUser.getAccountID());
+            user.endAuthSession(remoteAuthUser);
+            remoteAuthUser = null;
+        }
+    }
 }

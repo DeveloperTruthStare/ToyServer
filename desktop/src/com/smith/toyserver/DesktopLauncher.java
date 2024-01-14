@@ -3,7 +3,11 @@ package com.smith.toyserver;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.codedisaster.steamworks.SteamAPI;
+import com.codedisaster.steamworks.SteamAPIWarningMessageHook;
 import com.codedisaster.steamworks.SteamException;
+import com.codedisaster.steamworks.SteamGameServerAPI;
+import com.codedisaster.steamworks.SteamUtils;
+import com.codedisaster.steamworks.SteamUtilsCallback;
 import com.smith.toyserver.networking.GameClient;
 import com.smith.toyserver.networking.Server;
 
@@ -18,7 +22,7 @@ public class DesktopLauncher {
 		public void run() {
 			while (mainThread.isAlive()) {
 				try {
-					Thread.sleep(15);
+					Thread.sleep(1000  / 60);
 				} catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
@@ -26,10 +30,26 @@ public class DesktopLauncher {
 			}
 		}
 	}
+	private static final SteamAPIWarningMessageHook clMessageHook = new SteamAPIWarningMessageHook() {
+		@Override
+		public void onWarningMessage(int severity, String message) {
+			System.err.println("[client debug message] (" + severity + ") " + message);
+		}
+	};
+	private static final SteamUtilsCallback clUtilsCallback = new SteamUtilsCallback() {
+		@Override
+		public void onSteamShutdown() {
+			System.err.println("Steam client requested to shut down!");
+		}
+	};
 	public static boolean isServer = true;
+
+	public static SteamUtils clientUtils;
+
 	public static void main (String[] arg) {
 		// Initialize Steam
 		try {
+			SteamGameServerAPI.loadLibraries();
 			SteamAPI.loadLibraries();
 
 			if (!SteamAPI.init()) {
@@ -40,6 +60,8 @@ public class DesktopLauncher {
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
 		}
+		clientUtils = new SteamUtils(clUtilsCallback);
+		clientUtils.setWarningMessageHook(clMessageHook);
 
 		// Start Steam callbacks
 		SteamThread steam = new SteamThread(Thread.currentThread());
@@ -47,27 +69,11 @@ public class DesktopLauncher {
 		steamThread.start();
 
 
-		// This would be called in a create game function
-		if (isServer) {
-			// Start Game Server
-			GameManager gameManager = new GameManager();
-			Server server = new Server(gameManager);
-			server.start();
-		}
-
-		// Start Game Network Client
-		GameClient client = new GameClient(Thread.currentThread());
-		Thread clientThread = new Thread(client);
-		clientThread.start();
-
-		ToyServer mainGame = new ToyServer();
-		mainGame.setClient(client);
-
 		// Initialize Application
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 		config.setForegroundFPS(60);
 		config.setTitle("Toy Server");
 		config.setWindowedMode(1920, 1080);
-		new Lwjgl3Application(mainGame, config);
+		new Lwjgl3Application(new ToyServer(), config);
 	}
 }
