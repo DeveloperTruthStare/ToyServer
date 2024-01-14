@@ -42,7 +42,6 @@ public class DesktopLauncher {
 			System.err.println("Steam client requested to shut down!");
 		}
 	};
-	public static boolean isServer = true;
 
 	public static SteamUtils clientUtils;
 
@@ -68,6 +67,8 @@ public class DesktopLauncher {
 		Thread steamThread = new Thread(steam);
 		steamThread.start();
 
+		Server server = new Server();
+		server.start();
 
 		// Initialize Application
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();

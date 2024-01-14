@@ -26,7 +26,7 @@ public class GameManager {
         private Thread mainThread;
         public GameServer(Thread mainThread) {
             this.mainThread = mainThread;
-            try {
+            /*try {
                 SteamGameServerAPI.loadLibraries();
                 if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27010, (short) 27011,
                         SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
@@ -34,7 +34,7 @@ public class GameManager {
                 }
             } catch (SteamException e) {
                 throw new RuntimeException(e);
-            }
+            }*/
         }
         @Override
         public void run() {

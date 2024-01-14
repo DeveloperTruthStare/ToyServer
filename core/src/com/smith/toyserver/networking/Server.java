@@ -267,9 +267,7 @@ public class Server {
 
 
 
-    private GameManager gameManager;
-    public Server(GameManager gameManager) {
-        this.gameManager = gameManager;
+    public Server() {
 
         // Load SteamGameServerAPI
         try {
@@ -368,12 +366,7 @@ public class Server {
                 String message = new String(bytes, messageCharset);
                 System.out.println("Rcv message: \"" + message + "\"");
             }
-
         }
-
-        // Server Update method here I think
-        gameManager.update(0);
-
     }
 
 

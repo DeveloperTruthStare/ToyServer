@@ -234,12 +234,13 @@ public class ToyServer extends Game {
 	private SteamNetworking networking;
 	@Override
 	public void create () {
+		/*
 		// Load SteamGameServerAPI
 		try {
 			SteamGameServerAPI.loadLibraries();
 			if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27010, (short) 27011,
 					SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
-				System.out.println("SteamGameServerAPI.init() failed");
+				System.out.println("Main SteamGameServerAPI.init() failed");
 			}
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
@@ -255,7 +256,7 @@ public class ToyServer extends Game {
 		setScreen(this.titleScreen);
 		this.currentScreen = titleScreen;
 		Gdx.input.setInputProcessor(inputProcessor);
-
+*/
 	}
 	public void startServer() {
 		System.out.println("Starting Server");
