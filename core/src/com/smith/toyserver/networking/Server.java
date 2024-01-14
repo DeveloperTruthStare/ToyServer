@@ -7,6 +7,7 @@ import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamFriends;
 import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamGameServerAPI;
+import com.codedisaster.steamworks.SteamGameServerNetworking;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
@@ -277,6 +278,9 @@ public class Server {
         }
 
         networking = new SteamNetworking(peer2peerCallback);
+        networking.allowP2PPacketRelay(true);
+
+        //steamGameServerNetworking = new SteamGameServerNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(steamFriendsCallback);
         user = new SteamUser(steamUserCallback);
@@ -324,7 +328,7 @@ public class Server {
 
             // Error checking
             if (packetReadSize == 0) {
-                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender);
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
             } else if (packetReadSize < packetSize[0]) {
                 System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
             }
@@ -345,7 +349,6 @@ public class Server {
 
                 String message = new String(bytes, messageCharset);
                 System.out.println("Rcv message: \"" + message + "\"");
-
             }
 
         }
