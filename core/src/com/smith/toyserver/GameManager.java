@@ -12,20 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.charset.Charset;
 
 public class GameManager {
-    private SteamNetworkingCallback peer2peerCallback = new SteamNetworkingCallback() {
-        @Override
-        public void onP2PSessionConnectFail(SteamID steamIDRemote, SteamNetworking.P2PSessionError sessionError) {
-            System.out.println("P2P connection failed: userID=" + steamIDRemote.getAccountID() +
-                    ", error: " + sessionError);
 
-        }
-
-        @Override
-        public void onP2PSessionRequest(SteamID steamIDRemote) {
-            System.out.println("P2P connection requested by userID " + steamIDRemote.getAccountID());
-            networking.acceptP2PSessionWithUser(steamIDRemote);
-        }
-    };
     private static final int defaultChannel = 1;
     private static final Charset messageCharset = StandardCharsets.UTF_8;
     private static final int readBufferCapacity = 4096;
@@ -35,7 +22,7 @@ public class GameManager {
     SteamID hostId;
     SteamID clientId;
 
-    public class GameServer implements Runnable{
+    public class GameServer implements Runnable {
         private Thread mainThread;
         public GameServer(Thread mainThread) {
             this.mainThread = mainThread;
@@ -253,11 +240,9 @@ public class GameManager {
     private GameClient client;
     public SteamNetworking networking;
 
-    public GameManager(boolean isHost) {
+    public GameManager(boolean isHost, SteamNetworking networking) {
         this.host = isHost;
-
-        networking = new SteamNetworking(peer2peerCallback);
-        networking.allowP2PPacketRelay(true);
+        this.networking = networking;
 
         if (this.host) {
             // Start Steam Server Stuff

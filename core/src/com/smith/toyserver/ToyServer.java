@@ -16,6 +16,8 @@ import com.codedisaster.steamworks.SteamGameServerAPI;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
+import com.codedisaster.steamworks.SteamNetworking;
+import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
@@ -90,6 +92,20 @@ public class ToyServer extends Game {
 			return false;
 		}
 	};
+	private SteamNetworkingCallback peer2peerCallback = new SteamNetworkingCallback() {
+		@Override
+		public void onP2PSessionConnectFail(SteamID steamIDRemote, SteamNetworking.P2PSessionError sessionError) {
+			System.out.println("P2P connection failed: userID=" + steamIDRemote.getAccountID() +
+					", error: " + sessionError);
+
+		}
+
+		@Override
+		public void onP2PSessionRequest(SteamID steamIDRemote) {
+			System.out.println("P2P connection requested by userID " + steamIDRemote.getAccountID());
+			networking.acceptP2PSessionWithUser(steamIDRemote);
+		}
+	};
 	public SteamMatchmakingCallback matchmakingCallback = new SteamMatchmakingCallback() {
 		@Override
 		public void onFavoritesListChanged(int ip, int queryPort, int connPort, int appID, int flags, boolean add, int accountID) {
@@ -107,7 +123,7 @@ public class ToyServer extends Game {
 			for(int i = 0; i < friendCount; ++i) {
 				SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
 				if (friend.getAccountID() == accountId) {
-					gameManager = new GameManager(false);
+					gameManager = new GameManager(false, networking);
 					openGameScreen(new GameScreen(gameManager));
 					gameManager.setHostId(friend);
 				}
@@ -140,8 +156,6 @@ public class ToyServer extends Game {
 		@Override
 		public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
 			matchmaking.setLobbyData(steamIDLobby, "hostAccountId", String.valueOf(user.getSteamID().getAccountID()));
-			gameManager = new GameManager(true);
-			openGameScreen(new GameScreen(gameManager));
 		}
 		@Override
 		public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -217,8 +231,12 @@ public class ToyServer extends Game {
 	private SteamFriends steamFriends;
 	private SteamUser user;
 	public GameManager gameManager;
+	private SteamNetworking networking;
 	@Override
 	public void create () {
+		networking = new SteamNetworking(peer2peerCallback);
+		networking.allowP2PPacketRelay(true);
+
 		matchmaking = new SteamMatchmaking(matchmakingCallback);
 		steamFriends = new SteamFriends(friendsCallback);
 		user = new SteamUser(userCallback);
@@ -232,7 +250,7 @@ public class ToyServer extends Game {
 	public void startServer() {
 		System.out.println("Starting Server");
 		matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 2);
-		gameManager = new GameManager(true);
+		gameManager = new GameManager(true, networking);
 		openGameScreen(new GameScreen(gameManager));
 	}
 	private void openGameScreen(GameScreen gameScreen) {
