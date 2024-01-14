@@ -238,9 +238,6 @@ public class Server {
                     String message = new String(bytes, messageCharset);
                     System.out.println("Rcv message: \"" + message + "\"");
                 }
-
-                String message = new String(bytes, messageCharset);
-                System.out.println("Rcv message: \"" + message + "\"");
             }
         }
     }

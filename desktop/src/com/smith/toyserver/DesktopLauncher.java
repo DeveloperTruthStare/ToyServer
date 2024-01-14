@@ -3,9 +3,11 @@ package com.smith.toyserver;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.codedisaster.steamworks.SteamAPI;
+import com.codedisaster.steamworks.SteamAPIWarningMessageHook;
 import com.codedisaster.steamworks.SteamException;
-import com.smith.toyserver.networking.Client;
-import com.smith.toyserver.networking.Server;
+import com.codedisaster.steamworks.SteamGameServerAPI;
+import com.codedisaster.steamworks.SteamUtils;
+import com.codedisaster.steamworks.SteamUtilsCallback;
 
 // Please note that on macOS your application needs to be started with the -XstartOnFirstThread JVM argument
 public class DesktopLauncher {
@@ -26,10 +28,26 @@ public class DesktopLauncher {
 			}
 		}
 	}
-	private static boolean isServer = true;
+	private static final SteamAPIWarningMessageHook clMessageHook = new SteamAPIWarningMessageHook() {
+		@Override
+		public void onWarningMessage(int severity, String message) {
+			System.err.println("[client debug message] (" + severity + ") " + message);
+		}
+	};
+	private static final SteamUtilsCallback clUtilsCallback = new SteamUtilsCallback() {
+		@Override
+		public void onSteamShutdown() {
+			System.err.println("Steam client requested to shut down!");
+		}
+	};
+	public static boolean isServer = true;
+
+	public static SteamUtils clientUtils;
+
 	public static void main (String[] arg) {
 		// Initialize Steam
 		try {
+			SteamGameServerAPI.loadLibraries();
 			SteamAPI.loadLibraries();
 
 			if (!SteamAPI.init()) {
@@ -40,19 +58,14 @@ public class DesktopLauncher {
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
 		}
+		clientUtils = new SteamUtils(clUtilsCallback);
+		clientUtils.setWarningMessageHook(clMessageHook);
 
 		// Start Steam callbacks
 		SteamThread steam = new SteamThread(Thread.currentThread());
 		Thread steamThread = new Thread(steam);
 		steamThread.start();
 
-		if (isServer) {
-			Server server = new Server();
-			server.start();
-		} else {
-			Client client = new Client();
-			client.start();
-		}
 
 		// Initialize Application
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();

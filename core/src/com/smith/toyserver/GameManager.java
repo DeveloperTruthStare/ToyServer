@@ -161,13 +161,13 @@ public class GameManager {
         packetSendBuffer.put(bytes);
 
         packetSendBuffer.flip(); // limit=pos, pos=0
-        System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
         try {
             networking.sendP2PPacket(dest, packetSendBuffer,
                     SteamNetworking.P2PSend.Unreliable, defaultChannel);
         } catch (SteamException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("Pack Sent " + messageCharset.decode(packetSendBuffer).toString());
     }
     public void processUpdates() throws SteamException {
         // Check if a packet has been recv
