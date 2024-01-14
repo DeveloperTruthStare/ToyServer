@@ -8,6 +8,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamGameServerAPI;
+import com.smith.toyserver.*;
+import com.smith.toyserver.networking.GameClient;
 
 public class ToyServer extends Game{
 	public SpriteBatch batch;
@@ -16,5 +18,9 @@ public class ToyServer extends Game{
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
+	}
+
+	public void setClient(GameClient gameClient) {
+
 	}
 }

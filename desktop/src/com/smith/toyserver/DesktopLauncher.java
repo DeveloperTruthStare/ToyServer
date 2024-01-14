@@ -1,24 +1,19 @@
 package com.smith.toyserver;
 
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamException;
-import com.codedisaster.steamworks.SteamGameServerAPI;
-import com.smith.toyserver.ToyServer;
-
-import java.util.Scanner;
+import com.smith.toyserver.networking.GameClient;
+import com.smith.toyserver.networking.Server;
 
 // Please note that on macOS your application needs to be started with the -XstartOnFirstThread JVM argument
 public class DesktopLauncher {
 	public static class SteamThread implements Runnable {
 		public Thread mainThread;
-
 		public SteamThread(Thread mainThread) {
 			this.mainThread = mainThread;
 		}
-
 		@Override
 		public void run() {
 			while (mainThread.isAlive()) {
@@ -31,6 +26,7 @@ public class DesktopLauncher {
 			}
 		}
 	}
+	public static boolean isServer = true;
 	public static void main (String[] arg) {
 		// Initialize Steam
 		try {
@@ -50,15 +46,28 @@ public class DesktopLauncher {
 		Thread steamThread = new Thread(steam);
 		steamThread.start();
 
-		// Start Game Server
-		Server server = new Server();
-		server.start();
+
+		// This would be called in a create game function
+		if (isServer) {
+			// Start Game Server
+			GameManager gameManager = new GameManager();
+			Server server = new Server(gameManager);
+			server.start();
+		}
+
+		// Start Game Network Client
+		GameClient client = new GameClient(Thread.currentThread());
+		Thread clientThread = new Thread(client);
+		clientThread.start();
+
+		ToyServer mainGame = new ToyServer();
+		mainGame.setClient(client);
 
 		// Initialize Application
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 		config.setForegroundFPS(60);
 		config.setTitle("Toy Server");
 		config.setWindowedMode(1920, 1080);
-		new Lwjgl3Application(new ToyServer(), config);
+		new Lwjgl3Application(mainGame, config);
 	}
 }

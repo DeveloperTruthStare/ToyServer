@@ -1,4 +1,4 @@
-package com.smith.toyserver;
+package com.smith.toyserver.networking;
 
 import com.codedisaster.steamworks.*;
 
