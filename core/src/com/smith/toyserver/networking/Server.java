@@ -10,6 +10,7 @@ import com.codedisaster.steamworks.SteamGameServerAPI;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
+import com.codedisaster.steamworks.SteamMatchmakingServers;
 import com.codedisaster.steamworks.SteamNetworking;
 import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
@@ -93,6 +94,7 @@ public class Server {
             return alive;
         }
     }
+
     private SteamNetworkingCallback peer2peerCallback = new SteamNetworkingCallback() {
         @Override
         public void onP2PSessionConnectFail(SteamID steamIDRemote, SteamNetworking.P2PSessionError sessionError) {
@@ -107,7 +109,6 @@ public class Server {
             networking.acceptP2PSessionWithUser(steamIDRemote);
         }
     };
-
     private SteamMatchmakingCallback matchmakingCallback = new SteamMatchmakingCallback() {
         @Override
         public void onFavoritesListChanged(int ip, int queryPort, int connPort, int appID, int flags, boolean add, int accountID) {
@@ -119,20 +120,18 @@ public class Server {
         }
         @Override
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
-            System.out.println("On Lobby Enter");
-            System.out.println(steamIDLobby);
-            System.out.println(chatPermissions);
-            System.out.println(blocked);
-            System.out.println(response);
+            currentLobby = steamIDLobby;
+            // get host steamID
+            String hostId = matchmaking.getLobbyData(steamIDLobby, "hostSteamID");
+            SteamID hostSteamID = SteamID.createFromNativeHandle(Long.parseLong(hostId));
+            System.out.println(hostSteamID);
 
         }
         @Override
         public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
             // Called when lobby created
             System.out.println("Lobby Data Update");
-            System.out.println(steamIDLobby);
             System.out.println(steamIDMember);
-            System.out.println(success);
         }
         @Override
         public void onLobbyChatUpdate(SteamID steamIDLobby, SteamID steamIDUserChanged, SteamID steamIDMakingChange, SteamMatchmaking.ChatMemberStateChange stateChange) {
@@ -156,9 +155,8 @@ public class Server {
         }
         @Override
         public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
-            System.out.println("Lobby Created");
-            System.out.println(result);
-            System.out.println(steamIDLobby);
+            currentLobby = steamIDLobby;
+            matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID()));
         }
         @Override
         public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -213,11 +211,33 @@ public class Server {
 
         }
     };
+    private SteamUserCallback steamUserCallback = new SteamUserCallback() {
+        @Override
+        public void onAuthSessionTicket(SteamAuthTicket authTicket, SteamResult result) {
+
+        }
+
+        @Override
+        public void onValidateAuthTicket(SteamID steamID, SteamAuth.AuthSessionResponse authSessionResponse, SteamID ownerSteamID) {
+
+        }
+
+        @Override
+        public void onMicroTxnAuthorization(int appID, long orderID, boolean authorized) {
+
+        }
+
+        @Override
+        public void onEncryptedAppTicket(SteamResult result) {
+
+        }
+    };
     private SteamNetworking networking;
     private SteamMatchmaking matchmaking;
     private SteamFriends steamFriends;
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
-
+    private SteamID currentLobby = null;
+    private SteamUser user;
     private GameManager gameManager;
     public Server(GameManager gameManager) {
         this.gameManager = gameManager;
@@ -236,6 +256,9 @@ public class Server {
         networking = new SteamNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(steamFriendsCallback);
+        user = new SteamUser(steamUserCallback);
+        SteamID localUser = user.getSteamID();
+        System.out.println("Local User: " + localUser);
     }
 
     public void start() {
