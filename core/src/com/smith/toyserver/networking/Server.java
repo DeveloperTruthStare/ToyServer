@@ -28,15 +28,11 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
-    private static final int defaultChannel = 1;
+    private static final int defaultChannel = 0;
     private static final Charset messageCharset = StandardCharsets.UTF_8;
 
     private static final int readBufferCapacity = 4096;
-    private static final int sendBufferCapacity = 4096;
-
     private ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
-    private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
-
 
 
     private class GameServer implements  Runnable {
@@ -55,53 +51,13 @@ public class Server {
                     throw new RuntimeException(e);
                 }
 
-  /*              try {
+                try {
                     // run about 40 times a second
-//                    Thread.sleep(16);
+                    Thread.sleep(1000 / 40);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
-                }*/
-            }
-        }
-    }
-    private class InputHandler implements Runnable {
-
-        private volatile boolean alive;
-        private final Thread mainThread;
-        private final Scanner scanner;
-
-        public InputHandler(Thread mainThread) {
-            this.alive = true;
-            this.mainThread = mainThread;
-
-            this.scanner = new Scanner(System.in, "UTF-8");
-            scanner.useDelimiter("[\r\n\t]");
-        }
-
-        @Override
-        public void run() {
-            try {
-                while (alive && mainThread.isAlive()) {
-                    if (scanner.hasNext()) {
-                        String input = scanner.next();
-                        if (input.equals("quit") || input.equals("exit")) {
-                            alive = false;
-                        } else {
-                            try {
-                                processInput(input);
-                            } catch (NumberFormatException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
                 }
-            } catch (SteamException e) {
-                e.printStackTrace();
             }
-        }
-
-        public boolean alive() {
-            return alive;
         }
     }
 
@@ -130,20 +86,6 @@ public class Server {
         }
         @Override
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
-            currentLobby = steamIDLobby;
-
-            // get host steamID
-            int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostSteamID"));
-
-            int friends = steamFriends.getFriendCount(SteamFriends.FriendFlags.Immediate);
-
-            for(int i = 0; i < friends; ++i) {
-                SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
-                if (friend.getAccountID() == accountId) {
-                    hostSteamID = friend;
-                    return;
-                }
-            }
         }
         @Override
         public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
@@ -170,52 +112,10 @@ public class Server {
         }
         @Override
         public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
-            currentLobby = steamIDLobby;
             matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID().getAccountID()));
         }
         @Override
         public void onFavoritesListAccountsUpdated(SteamResult result) {
-
-        }
-    };
-    private SteamFriendsCallback steamFriendsCallback = new SteamFriendsCallback() {
-        @Override
-        public void onSetPersonaNameResponse(boolean success, boolean localSuccess, SteamResult result) {
-
-        }
-
-        @Override
-        public void onPersonaStateChange(SteamID steamID, SteamFriends.PersonaChange change) {
-
-        }
-
-        @Override
-        public void onGameOverlayActivated(boolean active) {
-
-        }
-
-        @Override
-        public void onGameLobbyJoinRequested(SteamID steamIDLobby, SteamID steamIDFriend) {
-            matchmaking.joinLobby(steamIDLobby);
-        }
-
-        @Override
-        public void onAvatarImageLoaded(SteamID steamID, int image, int width, int height) {
-
-        }
-
-        @Override
-        public void onFriendRichPresenceUpdate(SteamID steamIDFriend, int appID) {
-
-        }
-
-        @Override
-        public void onGameRichPresenceJoinRequested(SteamID steamIDFriend, String connect) {
-
-        }
-
-        @Override
-        public void onGameServerChangeRequested(String server, String password) {
 
         }
     };
@@ -251,28 +151,16 @@ public class Server {
     };
     private SteamNetworking networking;
     private SteamMatchmaking matchmaking;
-    private SteamFriends steamFriends;
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
-    private SteamID currentLobby = null;
     private SteamUser user;
-    private SteamID hostSteamID;
-
-    private SteamAuthTicket userAuthTicket;
-    private ByteBuffer userAuthTicketData = ByteBuffer.allocateDirect(256);
-
     private SteamID remoteAuthUser;
-    private ByteBuffer remoteAuthTicketData = ByteBuffer.allocateDirect(256);
-
-    private final byte[] AUTH = "AUTH".getBytes(Charset.defaultCharset());
-
-
 
     public Server() {
 
         // Load SteamGameServerAPI
         try {
             SteamGameServerAPI.loadLibraries();
-            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27010, (short) 27011,
+            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27020, (short) 27021,
                     SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
                 System.out.println("SteamGameServerAPI.init() failed");
             }
@@ -284,48 +172,20 @@ public class Server {
         networking.allowP2PPacketRelay(true);
 
         matchmaking = new SteamMatchmaking(matchmakingCallback);
-        steamFriends = new SteamFriends(steamFriendsCallback);
 
         user = new SteamUser(userCallback);
-        SteamID localUser = user.getSteamID();
-        System.out.println("Local User: " + localUser.getAccountID());
     }
 
     public void start() {
-        InputHandler inputHandler = new InputHandler(Thread.currentThread());
-        Thread inputThread = new Thread(inputHandler);
-        inputThread.start();
-
-
+        System.out.println("Starting Server");
         GameServer server = new GameServer(Thread.currentThread());
         Thread serverThread = new Thread(server);
         serverThread.start();
 
-        // ALlows other people to join through steam interface
+        // Allows other people to join through steam interface
         matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 2);
     }
 
-    public void processInput(String input) throws SteamException {
-        System.out.println(input);
-        if (input.startsWith("test")) {
-
-            packetSendBuffer.clear(); // pos=0, limit=cap
-
-            String msg = "Hello World";
-            byte[] bytes = msg.getBytes();
-            packetSendBuffer.put(bytes);
-
-            packetSendBuffer.flip(); // limit=pos, pos=0
-            System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
-            try {
-                networking.sendP2PPacket(hostSteamID, packetSendBuffer,
-                        SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
-            } catch (SteamException e) {
-                throw new RuntimeException(e);
-            }
-
-        }
-    }
     public void processUpdate() throws SteamException {
         // Check if a packet has been recv
         int[] packetSize = new int[1];
@@ -352,11 +212,6 @@ public class Server {
             packetReadBuffer.limit(packetReadSize);
 
             if (packetReadSize > 0) {
-                // We have recv a packet
-
-                // Register the sender if unknown
-                registerRemoteSteamID(steamIDSender);
-
                 int bytesReceived = packetReadBuffer.limit();
                 System.out.println("Rcv packet: userID=" + steamIDSender.getAccountID() + ", " + bytesReceived + " bytes");
 
@@ -369,36 +224,6 @@ public class Server {
         }
     }
 
-
-    private void registerRemoteSteamID(SteamID steamIDUser) {
-        if (!remoteUserIDs.containsKey(steamIDUser.getAccountID())) {
-            remoteUserIDs.put(steamIDUser.getAccountID(), steamIDUser);
-        }
-    }
-
-    private void broadcastAuthTicket() throws SteamException {
-        if (userAuthTicket == null || !userAuthTicket.isValid()) {
-            System.out.println("Error: won't broadcast nil auth ticket");
-            return;
-        }
-
-        for (Map.Entry<Integer, SteamID> remoteUser : remoteUserIDs.entrySet()) {
-
-            System.out.println("Send auth to remote user: " + remoteUser.getKey() +
-                    "[hash: " + userAuthTicketData.hashCode() + "]");
-
-            packetSendBuffer.clear(); // pos=0, limit=cap
-
-            packetSendBuffer.put(AUTH); // magic bytes
-            packetSendBuffer.put(userAuthTicketData);
-
-            userAuthTicketData.flip(); // limit=pos, pos=0
-            packetSendBuffer.flip(); // limit=pos, pos=0
-
-            networking.sendP2PPacket(remoteUser.getValue(), packetSendBuffer,
-                    SteamNetworking.P2PSend.Reliable, defaultChannel);
-        }
-    }
     private void endAuthSession() {
         if (remoteAuthUser != null) {
             System.out.println("End auth session with user: " + remoteAuthUser.getAccountID());
