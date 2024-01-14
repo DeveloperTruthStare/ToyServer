@@ -133,19 +133,12 @@ public class Server {
                     ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
                     packetSendBuffer.clear(); // pos=0, limit=cap
 
-                    String[] params = "Hello, World".split(" ");
-
-                    for (int j = 1; i < params.length; i++) {
-                        byte[] bytes = params[i].getBytes(messageCharset);
-                        if (i > 1) {
-                            packetSendBuffer.put((byte) 0x20);
-                        }
-                        packetSendBuffer.put(bytes);
-                    }
-                    System.out.println(packetSendBuffer.toString());
+                    String msg = "Hello World";
+                    byte[] bytes = msg.getBytes();
+                    packetSendBuffer.put(bytes);
 
                     packetSendBuffer.flip(); // limit=pos, pos=0
-                    System.out.println(packetSendBuffer);
+                    System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
                     try {
                         networking.sendP2PPacket(hostSteamID, packetSendBuffer,
                                 SteamNetworking.P2PSend.Unreliable, defaultChannel);
@@ -312,7 +305,7 @@ public class Server {
         // Check if a packet has been recv
         int[] packetSize = new int[1];
         if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-            System.out.println(packetSize);
+            System.out.println(packetSize[0]);
             SteamID steamIDSender = new SteamID();
 
             int readBufferCapacity = 4096;
