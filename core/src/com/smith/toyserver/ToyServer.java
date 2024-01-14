@@ -78,6 +78,7 @@ public class ToyServer extends Game {
 			while(mainThread.isAlive()) {
 				try {
 					processUpdates();
+					manager.update(0);
 					Thread.sleep(1000 / 40);
 				} catch (Exception e) {
 					System.err.println(e.getMessage());
@@ -203,7 +204,8 @@ public class ToyServer extends Game {
 			for(int i = 0; i < friendCount; ++i) {
 				SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
 				if (friend.getAccountID() == accountId) {
-					openGameScreen();
+					hostId = friend;
+					startClient();
 				}
 			}
 		}
@@ -339,6 +341,15 @@ public class ToyServer extends Game {
 
 		openGameScreen();
 	}
+	public void startClient() {
+		System.out.println("Starting Client");
+		host = false;
+		client = new GameClient(Thread.currentThread());
+		Thread gameClientThread = new Thread(client);
+		gameClientThread.start();
+
+		openGameScreen();
+	}
 	private void openGameScreen() {
 		gameScreen = new GameScreen();
 		gameScreen.setGameState(manager.getGameState());
@@ -419,7 +430,7 @@ public class ToyServer extends Game {
 	public void processMessage(String message) {
 		if (message.startsWith("SetVelocity:")) {
 			String[] parts = message.substring("SetVelocity:".length()).split(",");
-			Vector2 velocity = new Vector2(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+			Vector2 velocity = new Vector2(Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
 			// Server has recv set velocity
 			if (host) {
 				this.manager.setVelocity(2, velocity);
