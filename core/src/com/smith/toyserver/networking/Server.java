@@ -122,10 +122,37 @@ public class Server {
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
             currentLobby = steamIDLobby;
             // get host steamID
-            String hostId = matchmaking.getLobbyData(steamIDLobby, "hostSteamID");
-            SteamID hostSteamID = SteamID.createFromNativeHandle(Long.parseLong(hostId));
-            System.out.println(hostSteamID);
+            int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostSteamID"));
+            int friends = steamFriends.getFriendCount(SteamFriends.FriendFlags.Immediate);
+            for(int i = 0; i < friends; ++i) {
+                SteamID friend = steamFriends.getFriendByIndex(i, SteamFriends.FriendFlags.Immediate);
+                if (friend.getAccountID() == accountId) {
+                    hostSteamID = friend;
 
+                    int sendBufferCapacity = 4096;
+                    ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
+                    packetSendBuffer.clear(); // pos=0, limit=cap
+                    String[] params = "Hello, World".split(" ");
+
+                    for (int j = 1; i < params.length; i++) {
+                        byte[] bytes = params[i].getBytes(messageCharset);
+                        if (i > 1) {
+                            packetSendBuffer.put((byte) 0x20);
+                        }
+                        packetSendBuffer.put(bytes);
+                    }
+
+                    packetSendBuffer.flip(); // limit=pos, pos=0
+
+                    try {
+                        networking.sendP2PPacket(hostSteamID, packetSendBuffer,
+                                SteamNetworking.P2PSend.Unreliable, defaultChannel);
+                    } catch (SteamException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return;
+                }
+            }
         }
         @Override
         public void onLobbyDataUpdate(SteamID steamIDLobby, SteamID steamIDMember, boolean success) {
@@ -156,7 +183,7 @@ public class Server {
         @Override
         public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
             currentLobby = steamIDLobby;
-            matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID()));
+            matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID().getAccountID()));
         }
         @Override
         public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -238,6 +265,7 @@ public class Server {
     private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
     private SteamID currentLobby = null;
     private SteamUser user;
+    private SteamID hostSteamID;
     private GameManager gameManager;
     public Server(GameManager gameManager) {
         this.gameManager = gameManager;
