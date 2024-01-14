@@ -26,7 +26,7 @@ public class DesktopLauncher {
 			}
 		}
 	}
-	private static boolean isServer = false;
+	private static boolean isServer = true;
 	public static void main (String[] arg) {
 		// Initialize Steam
 		try {

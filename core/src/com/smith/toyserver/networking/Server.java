@@ -28,7 +28,7 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
-    private static final int defaultChannel = 0;
+    private static final int defaultChannel = 1;
     private static final Charset messageCharset = StandardCharsets.UTF_8;
 
     private static final int readBufferCapacity = 4096;
@@ -53,7 +53,7 @@ public class Server {
 
                 try {
                     // run about 40 times a second
-                    Thread.sleep(1000 / 40);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -149,9 +149,12 @@ public class Server {
 
         }
     };
+
+
+
+
     private SteamNetworking networking;
     private SteamMatchmaking matchmaking;
-    private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
     private SteamUser user;
     private SteamID remoteAuthUser;
 
@@ -160,7 +163,7 @@ public class Server {
         // Load SteamGameServerAPI
         try {
             SteamGameServerAPI.loadLibraries();
-            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27020, (short) 27021,
+            if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27016, (short) 27017,
                     SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
                 System.out.println("SteamGameServerAPI.init() failed");
             }
@@ -183,7 +186,7 @@ public class Server {
         serverThread.start();
 
         // Allows other people to join through steam interface
-        matchmaking.createLobby(SteamMatchmaking.LobbyType.FriendsOnly, 2);
+        matchmaking.createLobby(SteamMatchmaking.LobbyType.Public, 5);
     }
 
     public void processUpdate() throws SteamException {
@@ -201,7 +204,7 @@ public class Server {
             packetReadBuffer.clear();
 
             int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
-
+            System.out.println(packetReadSize);
             // Error checking
             if (packetReadSize == 0) {
                 System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());

@@ -1,6 +1,7 @@
 package com.smith.toyserver.networking;
 
 import com.badlogic.gdx.Game;
+import com.codedisaster.steamworks.SteamAPIWarningMessageHook;
 import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamFriends;
 import com.codedisaster.steamworks.SteamFriendsCallback;
@@ -10,6 +11,8 @@ import com.codedisaster.steamworks.SteamMatchmakingCallback;
 import com.codedisaster.steamworks.SteamNetworking;
 import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
+import com.codedisaster.steamworks.SteamUtils;
+import com.codedisaster.steamworks.SteamUtilsCallback;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -17,6 +20,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class Client {
+    protected SteamUtils clientUtils;
+
+
+    private final SteamAPIWarningMessageHook clMessageHook = new SteamAPIWarningMessageHook() {
+        @Override
+        public void onWarningMessage(int severity, String message) {
+            System.err.println("[client debug message] (" + severity + ") " + message);
+        }
+    };
+
+    private final SteamUtilsCallback clUtilsCallback = new SteamUtilsCallback() {
+        @Override
+        public void onSteamShutdown() {
+            System.err.println("Steam client requested to shut down!");
+        }
+    };
     private static final int defaultChannel = 1;
     private static final Charset messageCharset = StandardCharsets.UTF_8;
 
@@ -24,29 +43,6 @@ public class Client {
 
     private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
 
-
-
-
-    public class GameClient implements Runnable {
-        private Thread mainThread;
-        public GameClient(Thread mainThread) {
-            this.mainThread = mainThread;
-        }
-        @Override
-        public void run() {
-            while(mainThread.isAlive()) {
-                try {
-                    // Recv Data from server here
-                    // ...
-
-
-                    Thread.sleep(1000 / 40);
-                } catch (Exception e) {
-                    System.err.println(e.getMessage());
-                }
-            }
-        }
-    }
     private class InputHandler implements Runnable {
 
         private volatile boolean alive;
@@ -222,21 +218,19 @@ public class Client {
         networking = new SteamNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(friendsCallback);
+
+        clientUtils = new SteamUtils(clUtilsCallback);
+        clientUtils.setWarningMessageHook(clMessageHook);
     }
     public void start() {
         Client.InputHandler inputHandler = new Client.InputHandler(Thread.currentThread());
         Thread inputThread = new Thread(inputHandler);
         inputThread.start();
-
-        GameClient client = new GameClient(Thread.currentThread());
-        Thread clientThread = new Thread(client);
-        clientThread.start();
     }
-    public void processInput(String input) {
+    public void processInput(String msg) {
         if (hostSteamID == null) return;
         packetSendBuffer.clear(); // pos=0, limit=cap
 
-        String msg = "Hello World";
         byte[] bytes = msg.getBytes();
         packetSendBuffer.put(bytes);
 
@@ -244,7 +238,7 @@ public class Client {
         System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
         try {
             networking.sendP2PPacket(hostSteamID, packetSendBuffer,
-                    SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
+                    SteamNetworking.P2PSend.Unreliable, defaultChannel);
         } catch (SteamException e) {
             throw new RuntimeException(e);
         }
