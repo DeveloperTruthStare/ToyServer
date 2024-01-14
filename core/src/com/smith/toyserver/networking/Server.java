@@ -1,30 +1,21 @@
 package com.smith.toyserver.networking;
 
-import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamAuth;
 import com.codedisaster.steamworks.SteamAuthTicket;
 import com.codedisaster.steamworks.SteamException;
-import com.codedisaster.steamworks.SteamFriends;
-import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamGameServerAPI;
-import com.codedisaster.steamworks.SteamGameServerNetworking;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
-import com.codedisaster.steamworks.SteamMatchmakingServers;
 import com.codedisaster.steamworks.SteamNetworking;
 import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
-import com.smith.toyserver.GameManager;
-
-import java.awt.SystemColor;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
@@ -32,8 +23,18 @@ public class Server {
     private static final Charset messageCharset = StandardCharsets.UTF_8;
 
     private static final int readBufferCapacity = 4096;
+    private static final int sendBufferCapacity = 4096;
     private ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
+    private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
+    private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
 
+    private SteamAuthTicket userAuthTicket;
+    private ByteBuffer userAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private SteamID remoteAuthUser;
+    private ByteBuffer remoteAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private final byte[] AUTH = "AUTH".getBytes(Charset.defaultCharset());
 
     private class GameServer implements  Runnable {
         private final Thread mainThread;
@@ -66,12 +67,13 @@ public class Server {
         public void onP2PSessionConnectFail(SteamID steamIDRemote, SteamNetworking.P2PSessionError sessionError) {
             System.out.println("P2P connection failed: userID=" + steamIDRemote.getAccountID() +
                     ", error: " + sessionError);
-
+            unregisterRemoteSteamID(steamIDRemote);
         }
 
         @Override
         public void onP2PSessionRequest(SteamID steamIDRemote) {
             System.out.println("P2P connection requested by userID " + steamIDRemote.getAccountID());
+            registerRemoteSteamID(steamIDRemote);
             networking.acceptP2PSessionWithUser(steamIDRemote);
         }
     };
@@ -156,7 +158,6 @@ public class Server {
     private SteamNetworking networking;
     private SteamMatchmaking matchmaking;
     private SteamUser user;
-    private SteamID remoteAuthUser;
 
     public Server() {
 
@@ -221,10 +222,70 @@ public class Server {
                 byte[] bytes = new byte[bytesReceived];
                 packetReadBuffer.get(bytes);
 
+                // check for magic bytes first
+                int magicBytes = checkMagicBytes(packetReadBuffer, AUTH);
+                if (magicBytes > 0) {
+                    // extract ticket
+                    remoteAuthTicketData.clear();
+                    remoteAuthTicketData.put(bytes, magicBytes, bytesReceived - magicBytes);
+                    remoteAuthTicketData.flip();
+                    System.out.println("Auth ticket received: " + remoteAuthTicketData.toString() +
+                            " [hash: " + remoteAuthTicketData.hashCode() + "]");
+                    // auth
+                    beginAuthSession(steamIDSender);
+                } else {
+                    // plain text message
+                    String message = new String(bytes, messageCharset);
+                    System.out.println("Rcv message: \"" + message + "\"");
+                }
+
                 String message = new String(bytes, messageCharset);
                 System.out.println("Rcv message: \"" + message + "\"");
             }
         }
+    }
+    private void registerRemoteSteamID(SteamID steamIDUser) {
+        if (!remoteUserIDs.containsKey(steamIDUser.getAccountID())) {
+            remoteUserIDs.put(steamIDUser.getAccountID(), steamIDUser);
+        }
+    }
+
+    private void unregisterRemoteSteamID(SteamID steamIDUser) {
+        remoteUserIDs.remove(steamIDUser.getAccountID());
+    }
+
+    private void getAuthTicket() throws SteamException {
+        cancelAuthTicket();
+        userAuthTicketData.clear();
+        int[] sizeRequired = new int[1];
+        userAuthTicket = user.getAuthSessionTicket(userAuthTicketData, sizeRequired);
+        if (userAuthTicket.isValid()) {
+            int numBytes = userAuthTicketData.limit();
+            System.out.println("Auth session ticket length: " + numBytes);
+            System.out.println("Auth ticket created: " + userAuthTicketData.toString() +
+                    " [hash: " + userAuthTicketData.hashCode() + "]");
+        } else {
+            if (sizeRequired[0] < userAuthTicketData.capacity()) {
+                System.out.println("Error: failed creating auth ticket");
+            } else {
+                System.out.println("Error: buffer too small for auth ticket, need " + sizeRequired[0] + " bytes");
+            }
+        }
+    }
+
+    private void cancelAuthTicket() {
+        if (userAuthTicket != null && userAuthTicket.isValid()) {
+            System.out.println("Auth ticket cancelled");
+            user.cancelAuthTicket(userAuthTicket);
+            userAuthTicket = null;
+        }
+    }
+
+    private void beginAuthSession(SteamID steamIDSender) throws SteamException {
+        endAuthSession();
+        System.out.println("Starting auth session with user: " + steamIDSender.getAccountID());
+        remoteAuthUser = steamIDSender;
+        user.beginAuthSession(remoteAuthTicketData, remoteAuthUser);
     }
 
     private void endAuthSession() {
@@ -233,5 +294,38 @@ public class Server {
             user.endAuthSession(remoteAuthUser);
             remoteAuthUser = null;
         }
+    }
+
+    private void broadcastAuthTicket() throws SteamException {
+        if (userAuthTicket == null || !userAuthTicket.isValid()) {
+            System.out.println("Error: won't broadcast nil auth ticket");
+            return;
+        }
+
+        for (Map.Entry<Integer, SteamID> remoteUser : remoteUserIDs.entrySet()) {
+
+            System.out.println("Send auth to remote user: " + remoteUser.getKey() +
+                    "[hash: " + userAuthTicketData.hashCode() + "]");
+
+            packetSendBuffer.clear(); // pos=0, limit=cap
+
+            packetSendBuffer.put(AUTH); // magic bytes
+            packetSendBuffer.put(userAuthTicketData);
+
+            userAuthTicketData.flip(); // limit=pos, pos=0
+            packetSendBuffer.flip(); // limit=pos, pos=0
+
+            networking.sendP2PPacket(remoteUser.getValue(), packetSendBuffer,
+                    SteamNetworking.P2PSend.Reliable, defaultChannel);
+        }
+    }
+
+    private int checkMagicBytes(ByteBuffer buffer, byte[] magicBytes) {
+        for (int b = 0; b < magicBytes.length; b++) {
+            if (buffer.get(b) != magicBytes[b]) {
+                return 0;
+            }
+        }
+        return magicBytes.length;
     }
 }

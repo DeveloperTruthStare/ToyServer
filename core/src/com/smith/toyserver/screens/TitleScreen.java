@@ -9,12 +9,10 @@ import com.smith.toyserver.Button;
 import com.smith.toyserver.IButtonCallback;
 import com.smith.toyserver.ToyServer;
 
-public class TitleScreen implements Screen, InputProcessor, IButtonCallback {
+public class TitleScreen implements Screen, InputProcessor {
     private ToyServer controller;
-    private Button hostButton;
     public TitleScreen(ToyServer controller) {
         this.controller = controller;
-        this.hostButton = new Button(900, 720, 200, 50, "Host Lobby", 0, this);
     }
     @Override
     public void show() {
@@ -27,7 +25,6 @@ public class TitleScreen implements Screen, InputProcessor, IButtonCallback {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         controller.batch.begin();
 
-        hostButton.render(controller.batch);
 
         controller.batch.end();
     }
@@ -74,7 +71,6 @@ public class TitleScreen implements Screen, InputProcessor, IButtonCallback {
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        hostButton.onMouseButtonClick(screenX, 1080 - screenY);
         return false;
     }
 
@@ -103,8 +99,4 @@ public class TitleScreen implements Screen, InputProcessor, IButtonCallback {
         return false;
     }
 
-    @Override
-    public void onClick(int buttonId) {
-        this.controller.startServer();
-    }
 }

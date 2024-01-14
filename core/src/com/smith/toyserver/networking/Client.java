@@ -2,22 +2,29 @@ package com.smith.toyserver.networking;
 
 import com.badlogic.gdx.Game;
 import com.codedisaster.steamworks.SteamAPIWarningMessageHook;
+import com.codedisaster.steamworks.SteamAuth;
+import com.codedisaster.steamworks.SteamAuthTicket;
 import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamFriends;
 import com.codedisaster.steamworks.SteamFriendsCallback;
+import com.codedisaster.steamworks.SteamGameServerNetworking;
 import com.codedisaster.steamworks.SteamID;
 import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
 import com.codedisaster.steamworks.SteamNetworking;
 import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
+import com.codedisaster.steamworks.SteamUser;
+import com.codedisaster.steamworks.SteamUserCallback;
 import com.codedisaster.steamworks.SteamUtils;
 import com.codedisaster.steamworks.SteamUtilsCallback;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Client {
     protected SteamUtils clientUtils;
@@ -109,6 +116,7 @@ public class Client {
         @Override
         public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {
             // Get Host Id
+            System.out.println("Joined Lobby");
             int accountId = Integer.parseInt(matchmaking.getLobbyData(steamIDLobby, "hostSteamID"));
 
             int friends = steamFriends.getFriendCount(SteamFriends.FriendFlags.Immediate);
@@ -204,8 +212,48 @@ public class Client {
         }
     };
 
+    private Map<Integer, SteamID> remoteUserIDs = new ConcurrentHashMap<Integer, SteamID>();
+
+    private SteamAuthTicket userAuthTicket;
+    private ByteBuffer userAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private SteamID remoteAuthUser;
+    private ByteBuffer remoteAuthTicketData = ByteBuffer.allocateDirect(256);
+
+    private final byte[] AUTH = "AUTH".getBytes(Charset.defaultCharset());
+    private SteamUser user;
 
 
+    private SteamUserCallback userCallback = new SteamUserCallback() {
+        @Override
+        public void onAuthSessionTicket(SteamAuthTicket authTicket, SteamResult result) {
+
+        }
+
+        @Override
+        public void onValidateAuthTicket(SteamID steamID,
+                                         SteamAuth.AuthSessionResponse authSessionResponse,
+                                         SteamID ownerSteamID) {
+
+            System.out.println("Auth session response for userID " + steamID.getAccountID() + ": " +
+                    authSessionResponse.name() + ", borrowed=" + (steamID.equals(ownerSteamID) ? "yes" : "no"));
+
+            if (authSessionResponse == SteamAuth.AuthSessionResponse.AuthTicketCanceled) {
+                // ticket owner has cancelled the ticket, end the session
+                endAuthSession();
+            }
+        }
+
+        @Override
+        public void onMicroTxnAuthorization(int appID, long orderID, boolean authorized) {
+
+        }
+
+        @Override
+        public void onEncryptedAppTicket(SteamResult result) {
+
+        }
+    };
 
 
     private SteamNetworking networking;
@@ -218,6 +266,7 @@ public class Client {
         networking = new SteamNetworking(peer2peerCallback);
         matchmaking = new SteamMatchmaking(matchmakingCallback);
         steamFriends = new SteamFriends(friendsCallback);
+        user = new SteamUser(userCallback);
 
         clientUtils = new SteamUtils(clUtilsCallback);
         clientUtils.setWarningMessageHook(clMessageHook);
@@ -229,6 +278,13 @@ public class Client {
     }
     public void processInput(String msg) {
         if (hostSteamID == null) return;
+        try {
+            broadcastAuthTicket();
+        } catch (SteamException e) {
+            throw new RuntimeException(e);
+        }
+        /*
+
         packetSendBuffer.clear(); // pos=0, limit=cap
 
         byte[] bytes = msg.getBytes();
@@ -242,5 +298,93 @@ public class Client {
         } catch (SteamException e) {
             throw new RuntimeException(e);
         }
+         */
+    }
+
+
+
+    private void registerRemoteSteamID(SteamID steamIDUser) {
+        if (!remoteUserIDs.containsKey(steamIDUser.getAccountID())) {
+            remoteUserIDs.put(steamIDUser.getAccountID(), steamIDUser);
+        }
+    }
+
+    private void unregisterRemoteSteamID(SteamID steamIDUser) {
+        remoteUserIDs.remove(steamIDUser.getAccountID());
+    }
+
+    private void getAuthTicket() throws SteamException {
+        cancelAuthTicket();
+        userAuthTicketData.clear();
+        int[] sizeRequired = new int[1];
+        userAuthTicket = user.getAuthSessionTicket(userAuthTicketData, sizeRequired);
+        if (userAuthTicket.isValid()) {
+            int numBytes = userAuthTicketData.limit();
+            System.out.println("Auth session ticket length: " + numBytes);
+            System.out.println("Auth ticket created: " + userAuthTicketData.toString() +
+                    " [hash: " + userAuthTicketData.hashCode() + "]");
+        } else {
+            if (sizeRequired[0] < userAuthTicketData.capacity()) {
+                System.out.println("Error: failed creating auth ticket");
+            } else {
+                System.out.println("Error: buffer too small for auth ticket, need " + sizeRequired[0] + " bytes");
+            }
+        }
+    }
+
+    private void cancelAuthTicket() {
+        if (userAuthTicket != null && userAuthTicket.isValid()) {
+            System.out.println("Auth ticket cancelled");
+            user.cancelAuthTicket(userAuthTicket);
+            userAuthTicket = null;
+        }
+    }
+
+    private void beginAuthSession(SteamID steamIDSender) throws SteamException {
+        endAuthSession();
+        System.out.println("Starting auth session with user: " + steamIDSender.getAccountID());
+        remoteAuthUser = steamIDSender;
+        user.beginAuthSession(remoteAuthTicketData, remoteAuthUser);
+    }
+
+    private void endAuthSession() {
+        if (remoteAuthUser != null) {
+            System.out.println("End auth session with user: " + remoteAuthUser.getAccountID());
+            user.endAuthSession(remoteAuthUser);
+            remoteAuthUser = null;
+        }
+    }
+
+    private void broadcastAuthTicket() throws SteamException {
+        if (userAuthTicket == null || !userAuthTicket.isValid()) {
+            System.out.println("Error: won't broadcast nil auth ticket");
+            return;
+        }
+
+        for (Map.Entry<Integer, SteamID> remoteUser : remoteUserIDs.entrySet()) {
+
+            System.out.println("Send auth to remote user: " + remoteUser.getKey() +
+                    "[hash: " + userAuthTicketData.hashCode() + "]");
+
+            packetSendBuffer.clear(); // pos=0, limit=cap
+
+            packetSendBuffer.put(AUTH); // magic bytes
+            packetSendBuffer.put(userAuthTicketData);
+
+            userAuthTicketData.flip(); // limit=pos, pos=0
+            packetSendBuffer.flip(); // limit=pos, pos=0
+
+            networking.sendP2PPacket(remoteUser.getValue(), packetSendBuffer,
+                    SteamNetworking.P2PSend.Reliable, defaultChannel);
+        }
+    }
+
+    private int checkMagicBytes(ByteBuffer buffer, byte[] magicBytes) {
+        for (int b = 0; b < magicBytes.length; b++) {
+            if (buffer.get(b) != magicBytes[b]) {
+                return 0;
+            }
+        }
+        return magicBytes.length;
     }
 }
