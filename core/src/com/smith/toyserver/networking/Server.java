@@ -172,7 +172,6 @@ public class Server {
         public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
             currentLobby = steamIDLobby;
             matchmaking.setLobbyData(steamIDLobby, "hostSteamID", String.valueOf(user.getSteamID().getAccountID()));
-            System.out.println("set  hostSteamID");
         }
         @Override
         public void onFavoritesListAccountsUpdated(SteamResult result) {
@@ -187,11 +186,7 @@ public class Server {
 
         @Override
         public void onPersonaStateChange(SteamID steamID, SteamFriends.PersonaChange change) {
-            /*
-            System.out.println("Persona State Change");
-            System.out.println(steamID);
-            System.out.println(change);
-            */
+
         }
 
         @Override
@@ -201,9 +196,6 @@ public class Server {
 
         @Override
         public void onGameLobbyJoinRequested(SteamID steamIDLobby, SteamID steamIDFriend) {
-            System.out.println("Game Lobby Join Requested");
-            System.out.println(steamIDLobby);
-            System.out.println(steamIDFriend);
             matchmaking.joinLobby(steamIDLobby);
         }
 

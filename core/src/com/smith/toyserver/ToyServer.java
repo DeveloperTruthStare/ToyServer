@@ -140,7 +140,7 @@ public class ToyServer extends Game {
 		@Override
 		public void onLobbyCreated(SteamResult result, SteamID steamIDLobby) {
 			matchmaking.setLobbyData(steamIDLobby, "hostAccountId", String.valueOf(user.getSteamID().getAccountID()));
-			gameManager = new GameManager(false);
+			gameManager = new GameManager(true);
 			openGameScreen(new GameScreen(gameManager));
 		}
 		@Override
