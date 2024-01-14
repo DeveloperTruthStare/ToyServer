@@ -2,9 +2,11 @@ package com.smith.toyserver;
 
 import com.badlogic.gdx.Game;
 
-public class GameManager {
+public class GameManager implements Runnable {
     private final GameState gameState;
-    public GameManager() {
+    private Thread mainThread;
+    public GameManager(Thread mainThread) {
+        this.mainThread = mainThread;
         this.gameState = new GameState();
     }
 
@@ -34,5 +36,18 @@ public class GameManager {
     }
     public GameState getGameState() {
         return this.gameState;
+    }
+
+    @Override
+    public void run() {
+        while (mainThread.isAlive()) {
+            update(0);
+
+            try {
+                Thread.sleep(1000 / 40);
+            } catch (Exception e) {
+                System.err.println(e.getMessage());
+            }
+        }
     }
 }

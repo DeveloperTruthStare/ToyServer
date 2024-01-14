@@ -56,7 +56,6 @@ public class ToyServer extends Game {
 				SteamGameServerAPI.runCallbacks();
 
 				try {
-					manager.update(0);
 					processUpdates();
 					synClients();
 					Thread.sleep(1000 / 40);
@@ -85,8 +84,7 @@ public class ToyServer extends Game {
 			while(mainThread.isAlive()) {
 				try {
 					processUpdates();
-					manager.update(0);
-					Thread.sleep(1000 / 40);
+					Thread.sleep(1000 / 160);
 				} catch (Exception e) {
 					System.err.println(e.getMessage());
 				}
@@ -329,7 +327,9 @@ public class ToyServer extends Game {
 		steamFriends = new SteamFriends(friendsCallback);
 		user = new SteamUser(userCallback);
 
-		this.manager = new GameManager();
+		this.manager = new GameManager(Thread.currentThread());
+		Thread managerThread = new Thread(this.manager);
+		managerThread.start();
 
 		batch = new SpriteBatch();
 		titleScreen = new TitleScreen(this);
@@ -388,7 +388,7 @@ public class ToyServer extends Game {
 		packetSendBuffer.flip(); // limit=pos, pos=0
 		try {
 			networking.sendP2PPacket(dest, packetSendBuffer,
-					SteamNetworking.P2PSend.Unreliable, defaultChannel);
+					SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
 		}
