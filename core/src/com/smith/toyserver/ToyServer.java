@@ -22,6 +22,8 @@ import com.codedisaster.steamworks.SteamNetworkingCallback;
 import com.codedisaster.steamworks.SteamResult;
 import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUserCallback;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smith.toyserver.screens.GameScreen;
 import com.smith.toyserver.screens.TitleScreen;
 
@@ -64,7 +66,12 @@ public class ToyServer extends Game {
 			}
 		}
 		public void synClients() {
-
+			try {
+				String syncMsg = "SYNC:" + new ObjectMapper().writeValueAsString(manager.getGameState());
+				sendMsg(clientId, syncMsg);
+			} catch (JsonProcessingException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 	private GameClient client;
@@ -371,9 +378,8 @@ public class ToyServer extends Game {
 	}
 
 	// Networking Calls
-	public void sendTo(SteamID dest, Vector2 velocity) {
+	public void sendMsg(SteamID dest, String msg) {
 		if (dest == null) return;
-		String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
 		packetSendBuffer.clear(); // pos=0, limit=cap
 
 		byte[] bytes = msg.getBytes();
@@ -387,6 +393,10 @@ public class ToyServer extends Game {
 			throw new RuntimeException(e);
 		}
 		System.out.println("Pack Sent " + messageCharset.decode(packetSendBuffer).toString());
+	}
+	public void sendTo(SteamID dest, Vector2 velocity) {
+		String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
+		sendMsg(dest, msg);
 	}
 	public void processUpdates() throws SteamException {
 		// Check if a packet has been recv
@@ -436,6 +446,14 @@ public class ToyServer extends Game {
 				this.manager.setVelocity(2, velocity);
 			} else {
 				this.manager.setVelocity(1, velocity);
+			}
+		} else if(message.startsWith("SYNC:")) {
+			message = message.substring("SYNC:".length());
+			try {
+				GameState gameState = new ObjectMapper().readValue(message, GameState.class);
+				manager.sync(gameState);
+			} catch (JsonProcessingException e) {
+				throw new RuntimeException(e);
 			}
 		}
 	}

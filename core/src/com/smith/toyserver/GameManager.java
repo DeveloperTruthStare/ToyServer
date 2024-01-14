@@ -27,7 +27,11 @@ public class GameManager {
             this.gameState.player2.velocity = new Vector2(velocity.x, velocity.y);
         }
     }
-
+    public void sync(GameState serverState) {
+        gameState.player1.syncWith(serverState.player1);
+        gameState.player2.syncWith(serverState.player2);
+        gameState.ball.syncWith(serverState.ball);
+    }
     public GameState getGameState() {
         return this.gameState;
     }
