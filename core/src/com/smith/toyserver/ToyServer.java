@@ -234,6 +234,16 @@ public class ToyServer extends Game {
 	private SteamNetworking networking;
 	@Override
 	public void create () {
+		// Load SteamGameServerAPI
+		try {
+			SteamGameServerAPI.loadLibraries();
+			if (!SteamGameServerAPI.init((127 << 24) + 1, (short) 27010, (short) 27011,
+					SteamGameServerAPI.ServerMode.NoAuthentication, "0.0.1")) {
+				System.out.println("SteamGameServerAPI.init() failed");
+			}
+		} catch (SteamException e) {
+			throw new RuntimeException(e);
+		}
 		networking = new SteamNetworking(peer2peerCallback);
 		networking.allowP2PPacketRelay(true);
 

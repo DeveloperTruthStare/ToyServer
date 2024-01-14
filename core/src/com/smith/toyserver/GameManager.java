@@ -50,78 +50,8 @@ public class GameManager {
                 }
             }
         }
-
-        public void processUpdates() throws SteamException {
-            // Check if a packet has been recv
-            int[] packetSize = new int[1];
-            if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-
-                SteamID steamIDSender = new SteamID();
-
-                if (packetSize[0] > packetReadBuffer.capacity()) {
-                    throw new SteamException("incoming packet larger than read buffer can handle");
-                }
-
-                // Clear previous message
-                packetReadBuffer.clear();
-
-                int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
-                clientId = steamIDSender;
-
-                // Error checking
-                if (packetReadSize == 0) {
-                    System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
-                } else if (packetReadSize < packetSize[0]) {
-                    System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
-                }
-
-                packetReadBuffer.limit(packetReadSize);
-
-                if (packetReadSize > 0) {
-                    // We have recv a packet
-
-                    // Register the sender if unknown
-                    clientId = steamIDSender;
-
-                    int bytesReceived = packetReadBuffer.limit();
-                    System.out.println("Rcv packet: userID=" + steamIDSender.getAccountID() + ", " + bytesReceived + " bytes");
-
-                    byte[] bytes = new byte[bytesReceived];
-                    packetReadBuffer.get(bytes);
-
-                    String message = new String(bytes, messageCharset);
-                    System.out.println("Rcv message: \"" + message + "\"");
-                    processMessage(message);
-                }
-            }
-        }
-        public void processMessage(String message) {
-            if (message.startsWith("SetVelocity:")) {
-                String[] parts = message.substring("SetVelocity:".length()).split(",");
-                Vector2 velocity = new Vector2(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-                // Server has recv set velocity
-                gameState.player2.velocity = velocity;
-            }
-        }
         public void synClients() {
 
-        }
-        public void sendToClients(Vector2 velocity) {
-            if (clientId == null) return;
-            String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
-            packetSendBuffer.clear(); // pos=0, limit=cap
-
-            byte[] bytes = msg.getBytes();
-            packetSendBuffer.put(bytes);
-
-            packetSendBuffer.flip(); // limit=pos, pos=0
-            System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
-            try {
-                networking.sendP2PPacket(clientId, packetSendBuffer,
-                        SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
-            } catch (SteamException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
     public class GameClient implements Runnable {
@@ -139,76 +69,6 @@ public class GameManager {
                     System.err.println(e.getMessage());
                 }
             }
-        }
-        public void processUpdates() throws SteamException {
-// Check if a packet has been recv
-            int[] packetSize = new int[1];
-            if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-
-                SteamID steamIDSender = new SteamID();
-
-                if (packetSize[0] > packetReadBuffer.capacity()) {
-                    throw new SteamException("incoming packet larger than read buffer can handle");
-                }
-
-                // Clear previous message
-                packetReadBuffer.clear();
-
-                int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
-
-                // Error checking
-                if (packetReadSize == 0) {
-                    System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
-                } else if (packetReadSize < packetSize[0]) {
-                    System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
-                }
-
-                packetReadBuffer.limit(packetReadSize);
-
-                if (packetReadSize > 0) {
-                    // We have recv a packet
-
-                    // Register the sender if unknown
-                    clientId = steamIDSender;
-
-                    int bytesReceived = packetReadBuffer.limit();
-                    System.out.println("Rcv packet: userID=" + steamIDSender.getAccountID() + ", " + bytesReceived + " bytes");
-
-                    byte[] bytes = new byte[bytesReceived];
-                    packetReadBuffer.get(bytes);
-
-                    String message = new String(bytes, messageCharset);
-                    System.out.println("Rcv message: \"" + message + "\"");
-                    processMessage(message);
-                }
-            }
-        }
-        public void processMessage(String message) {
-            if (message.startsWith("SetVelocity:")) {
-                String[] parts = message.substring("SetVelocity:".length()).split(",");
-                Vector2 velocity = new Vector2(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-                // Server has recv set velocity
-                gameState.player1.velocity = velocity;
-            }
-
-        }
-        public void sendToServer(Vector2 velocity) {
-            if (hostId == null) return;
-            String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
-            packetSendBuffer.clear(); // pos=0, limit=cap
-
-            byte[] bytes = msg.getBytes();
-            packetSendBuffer.put(bytes);
-
-            packetSendBuffer.flip(); // limit=pos, pos=0
-            System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
-            try {
-                networking.sendP2PPacket(hostId, packetSendBuffer,
-                        SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
-            } catch (SteamException e) {
-                throw new RuntimeException(e);
-            }
-
         }
     }
     public static class GameState {
@@ -269,11 +129,11 @@ public class GameManager {
         if (host) {
             this.gameState.player1.velocity = velocity;
             // Send to clients
-            this.server.sendToClients(velocity);
+            sendTo(clientId, velocity);
         } else {
             this.gameState.player2.velocity = velocity;
             // Send to server
-            this.client.sendToServer(velocity);
+            sendTo(hostId, velocity);
         }
     }
     public void tick(float dt) {
@@ -292,7 +152,73 @@ public class GameManager {
     public void setHostId(SteamID host) {
         this.hostId = host;
     }
+    public void sendTo(SteamID dest, Vector2 velocity) {
+        if (dest == null) return;
+        String msg = "SetVelocity:" + velocity.x + "," + velocity.y;
+        packetSendBuffer.clear(); // pos=0, limit=cap
 
+        byte[] bytes = msg.getBytes();
+        packetSendBuffer.put(bytes);
+
+        packetSendBuffer.flip(); // limit=pos, pos=0
+        System.out.println("Pack Send " + messageCharset.decode(packetSendBuffer).toString());
+        try {
+            networking.sendP2PPacket(dest, packetSendBuffer,
+                    SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
+        } catch (SteamException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public void processUpdates() throws SteamException {
+        // Check if a packet has been recv
+        int[] packetSize = new int[1];
+        if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
+
+            SteamID steamIDSender = new SteamID();
+
+            if (packetSize[0] > packetReadBuffer.capacity()) {
+                throw new SteamException("incoming packet larger than read buffer can handle");
+            }
+
+            // Clear previous message
+            packetReadBuffer.clear();
+
+            int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
+            if (host) clientId = steamIDSender;
+            // Error checking
+            if (packetReadSize == 0) {
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
+            } else if (packetReadSize < packetSize[0]) {
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
+            }
+
+            packetReadBuffer.limit(packetReadSize);
+
+            if (packetReadSize > 0) {
+                int bytesReceived = packetReadBuffer.limit();
+                System.out.println("Rcv packet: userID=" + steamIDSender.getAccountID() + ", " + bytesReceived + " bytes");
+
+                byte[] bytes = new byte[bytesReceived];
+                packetReadBuffer.get(bytes);
+
+                String message = new String(bytes, messageCharset);
+                System.out.println("Rcv message: \"" + message + "\"");
+                processMessage(message);
+            }
+        }
+    }
+    public void processMessage(String message) {
+        if (message.startsWith("SetVelocity:")) {
+            String[] parts = message.substring("SetVelocity:".length()).split(",");
+            Vector2 velocity = new Vector2(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+            // Server has recv set velocity
+            if (host) {
+                gameState.player2.velocity = velocity;
+            } else {
+                gameState.player1.velocity = velocity;
+            }
+        }
+    }
     public void updateGameStateFromServer(GameState serverState) {
         // Update each value in the game state if it is different enough from our local value
         gameState.player1.syncWith(serverState.player1);
