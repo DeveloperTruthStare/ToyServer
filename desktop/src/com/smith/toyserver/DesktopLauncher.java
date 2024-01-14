@@ -28,21 +28,7 @@ public class DesktopLauncher {
 			}
 		}
 	}
-	private static final SteamAPIWarningMessageHook clMessageHook = new SteamAPIWarningMessageHook() {
-		@Override
-		public void onWarningMessage(int severity, String message) {
-			System.err.println("[client debug message] (" + severity + ") " + message);
-		}
-	};
-	private static final SteamUtilsCallback clUtilsCallback = new SteamUtilsCallback() {
-		@Override
-		public void onSteamShutdown() {
-			System.err.println("Steam client requested to shut down!");
-		}
-	};
-	public static boolean isServer = true;
 
-	public static SteamUtils clientUtils;
 
 	public static void main (String[] arg) {
 		// Initialize Steam
@@ -58,14 +44,11 @@ public class DesktopLauncher {
 		} catch (SteamException e) {
 			throw new RuntimeException(e);
 		}
-		clientUtils = new SteamUtils(clUtilsCallback);
-		clientUtils.setWarningMessageHook(clMessageHook);
 
 		// Start Steam callbacks
 		SteamThread steam = new SteamThread(Thread.currentThread());
 		Thread steamThread = new Thread(steam);
 		steamThread.start();
-
 
 		// Initialize Application
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();

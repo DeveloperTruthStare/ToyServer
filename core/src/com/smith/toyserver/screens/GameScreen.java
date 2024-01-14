@@ -1,18 +1,22 @@
 package com.smith.toyserver.screens;
 
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
-import com.smith.toyserver.GameManager;
+import com.smith.toyserver.GameState;
 import com.smith.toyserver.ToyServer;
 import com.smith.toyserver.Vector2;
 
 public class GameScreen implements Screen, InputProcessor {
-    private GameManager gameManager;
-    public GameScreen(GameManager gameManager) {
-        this.gameManager = gameManager;
+    private GameState gameState;
+    public GameScreen() {
+        gameState = new GameState();
+    }
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
     }
     @Override
     public void show() {
@@ -23,12 +27,8 @@ public class GameScreen implements Screen, InputProcessor {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        gameManager.tick(delta);
-
-        GameManager.GameState gameState = gameManager.getGameState();
-
-        gameState.player1.draw();
         gameState.player2.draw();
+        gameState.player1.draw();
         gameState.ball.draw();
     }
 
@@ -60,9 +60,9 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public boolean keyDown(int keycode) {
         if (keycode == Input.Keys.W) {
-            gameManager.setPlayerVelocity(new Vector2(0, 10));
+            //gameManager.setPlayerVelocity(new Vector2(0, 10));
         } else if (keycode == Input.Keys.S) {
-            gameManager.setPlayerVelocity(new Vector2(0, -10));
+            //gameManager.setPlayerVelocity(new Vector2(0, -10));
         }
         return false;
     }
@@ -70,9 +70,9 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public boolean keyUp(int keycode) {
         if (keycode == Input.Keys.W) {
-            gameManager.setPlayerVelocity(new Vector2(0, 0));
+            //gameManager.setPlayerVelocity(new Vector2(0, 0));
         } else if (keycode == Input.Keys.S) {
-            gameManager.setPlayerVelocity(new Vector2(0, 0));
+            //gameManager.setPlayerVelocity(new Vector2(0, 0));
         }
         return false;
     }
