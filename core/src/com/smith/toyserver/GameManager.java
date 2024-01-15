@@ -2,8 +2,11 @@ package com.smith.toyserver;
 
 import com.badlogic.gdx.Game;
 
+import java.util.Random;
+
 public class GameManager implements Runnable {
     private final GameState gameState;
+    private Random rand = new Random();
     private Thread mainThread;
     public GameManager(Thread mainThread) {
         this.mainThread = mainThread;
@@ -14,11 +17,11 @@ public class GameManager implements Runnable {
         this.gameState.player1.update(dt);
         this.gameState.player2.update(dt);
         this.gameState.ball.update(dt);
-
-        if (this.gameState.ball.contains(this.gameState.player1)) {
-            this.gameState.ball.velocity = new Vector2(5, 0);
-        } else if (this.gameState.ball.contains(this.gameState.player2)) {
-            this.gameState.ball.velocity = new Vector2(-5, 0);
+        System.out.println(gameState.ball.position.y);
+        if (gameState.ball.contains(gameState.player1)) {
+            gameState.ball.bouncePlayer(gameState.player1);
+        } else if (gameState.ball.contains(gameState.player2)) {
+            gameState.ball.bouncePlayer(gameState.player2);
         }
     }
 

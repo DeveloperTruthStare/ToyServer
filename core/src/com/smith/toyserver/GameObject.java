@@ -1,5 +1,6 @@
 package com.smith.toyserver;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.smith.toyserver.Vector2;
 
@@ -9,9 +10,11 @@ public class GameObject {
     public Vector2 position;
     public Vector2 size;
     public Vector2 velocity;
+    public Color color;
     private ShapeRenderer shapeRenderer;
-    public GameObject() {
+    public GameObject(Color color) {
         init();
+        this.color = color;
     }
 
     public void init() {
@@ -24,7 +27,7 @@ public class GameObject {
         if (shapeRenderer == null) shapeRenderer = new ShapeRenderer();
         // Assume batch is ended
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(1, 1, 1, 1);
+        shapeRenderer.setColor(color);
         shapeRenderer.rect(this.position.x, this.position.y, this.size.x, this.size.y);
         shapeRenderer.end();
     }
