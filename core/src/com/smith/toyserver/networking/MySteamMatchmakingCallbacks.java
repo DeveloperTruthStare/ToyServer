@@ -18,7 +18,7 @@ public class MySteamMatchmakingCallbacks implements SteamMatchmakingCallback {
     }
     @Override
     public void onLobbyInvite(SteamID steamIDUser, SteamID steamIDLobby, long gameID) {
-
+        ngm.matchmaking.joinLobby(steamIDLobby);
     }
     @Override
     public void onLobbyEnter(SteamID steamIDLobby, int chatPermissions, boolean blocked, SteamMatchmaking.ChatRoomEnterResponse response) {

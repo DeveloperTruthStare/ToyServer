@@ -14,10 +14,25 @@ import com.smith.toyserver.ToyServer;
 import com.smith.toyserver.Vector2;
 import com.smith.toyserver.screens.GameScreen;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
 // Controller
 public class NetworkGameController {
     // Model
     private GameManager gameModel;
+
+    private static final int defaultChannel = 1;
+    private static final Charset messageCharset = StandardCharsets.UTF_8;
+    private static final int readBufferCapacity = 4096;
+    private static final int sendBufferCapacity = 4096;
+    private ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
+    private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
+
+
+
+
 
     private MySteamNetworkCallbacks networkCallbacks;
     public SteamNetworking networking;
@@ -84,7 +99,7 @@ public class NetworkGameController {
 
         packetSendBuffer.flip(); // limit=pos, pos=0
         try {
-            networkManager.networking.sendP2PPacket(dest, packetSendBuffer,
+            networking.sendP2PPacket(dest, packetSendBuffer,
                     SteamNetworking.P2PSend.UnreliableNoDelay, defaultChannel);
         } catch (SteamException e) {
             throw new RuntimeException(e);
@@ -100,4 +115,60 @@ public class NetworkGameController {
     public void syncClients() {
         gameServer.syncClients(gameModel.getGameState());
     }
+    public void processUpdates() throws SteamException {
+        // Check if a packet has been recv
+        int[] packetSize = new int[1];
+        if (networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
+            SteamID steamIDSender = new SteamID();
+
+            if (packetSize[0] > packetReadBuffer.capacity()) {
+                throw new SteamException("incoming packet larger than read buffer can handle");
+            }
+
+            // Clear previous message
+            packetReadBuffer.clear();
+
+            int packetReadSize = networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
+            if (host) clientId = steamIDSender;
+            // Error checking
+            if (packetReadSize == 0) {
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
+            } else if (packetReadSize < packetSize[0]) {
+                System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
+            }
+
+            packetReadBuffer.limit(packetReadSize);
+
+            if (packetReadSize > 0) {
+                int bytesReceived = packetReadBuffer.limit();
+
+                byte[] bytes = new byte[bytesReceived];
+                packetReadBuffer.get(bytes);
+
+                String message = new String(bytes, messageCharset);
+                processMessage(message);
+            }
+        }
+    }
+    public void processMessage(String message) {
+        if (message.startsWith("SetVelocity:")) {
+            String[] parts = message.substring("SetVelocity:".length()).split(",");
+            Vector2 velocity = new Vector2(Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
+            // Server has recv set velocity
+            if (host) {
+                gameModel.setVelocity(2, velocity);
+            } else {
+                this.gameModel.setVelocity(1, velocity);
+            }
+        } else if(message.startsWith("SYNC:")) {
+            message = message.substring("SYNC:".length());
+            try {
+                GameState gameState = new ObjectMapper().readValue(message, GameState.class);
+                gameModel.sync(gameState);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
 }

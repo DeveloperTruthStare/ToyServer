@@ -11,7 +11,7 @@ public class GameClient extends MySteamNetworkConnection implements Runnable {
     public void run() {
         while(mainThread.isAlive()) {
             try {
-                processUpdates();
+                controller.processUpdates();
                 Thread.sleep(1000 / 160);
             } catch (Exception e) {
                 System.err.println(e.getMessage());

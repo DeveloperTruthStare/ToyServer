@@ -30,7 +30,7 @@ public class GameServer extends MySteamNetworkConnection implements Runnable {
             SteamGameServerAPI.runCallbacks();
 
             try {
-                processUpdates();
+                networkGameController.processUpdates();
                 networkGameController.syncClients();
                 Thread.sleep(1000 / 40);
             } catch (Exception e ) {

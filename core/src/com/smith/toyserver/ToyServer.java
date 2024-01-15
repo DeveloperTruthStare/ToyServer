@@ -21,14 +21,6 @@ import java.nio.charset.StandardCharsets;
 public class ToyServer extends Game {
 
 	public GameManager manager;
-	private static final int defaultChannel = 1;
-	private static final Charset messageCharset = StandardCharsets.UTF_8;
-	private static final int readBufferCapacity = 4096;
-	private static final int sendBufferCapacity = 4096;
-	private ByteBuffer packetReadBuffer = ByteBuffer.allocateDirect(readBufferCapacity);
-	private ByteBuffer packetSendBuffer = ByteBuffer.allocateDirect(sendBufferCapacity);
-	SteamID hostId;
-	SteamID clientId;
 
 	private InputProcessor currentScreen;
 	public InputProcessor inputProcessor = new InputProcessor()  {
@@ -103,7 +95,6 @@ public class ToyServer extends Game {
 		}
 	};
 
-
 	public SpriteBatch batch;
 	private TitleScreen titleScreen;
 	private GameScreen gameScreen;
@@ -151,64 +142,5 @@ public class ToyServer extends Game {
 	public void setPlayerVelocity(Vector2 velocity) {
 		networkManager.setPlayerVelocity(velocity);
 		gameScreen.setGameState(networkManager.getGameState());
-	}
-
-	// Networking Calls
-
-	public void processUpdates() throws SteamException {
-		// Check if a packet has been recv
-		int[] packetSize = new int[1];
-		if (networkManager.networking.isP2PPacketAvailable(defaultChannel, packetSize)) {
-			SteamID steamIDSender = new SteamID();
-
-			if (packetSize[0] > packetReadBuffer.capacity()) {
-				throw new SteamException("incoming packet larger than read buffer can handle");
-			}
-
-			// Clear previous message
-			packetReadBuffer.clear();
-
-			int packetReadSize = networkManager.networking.readP2PPacket(steamIDSender, packetReadBuffer, defaultChannel);
-			if (host) clientId = steamIDSender;
-			// Error checking
-			if (packetReadSize == 0) {
-				System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but got none from " + steamIDSender.getAccountID());
-			} else if (packetReadSize < packetSize[0]) {
-				System.err.println("Rcv packet: expected " + packetSize[0] + " bytes, but only got " + packetReadSize);
-			}
-
-			packetReadBuffer.limit(packetReadSize);
-
-			if (packetReadSize > 0) {
-				int bytesReceived = packetReadBuffer.limit();
-
-				byte[] bytes = new byte[bytesReceived];
-				packetReadBuffer.get(bytes);
-
-				String message = new String(bytes, messageCharset);
-				processMessage(message);
-			}
-		}
-	}
-	public boolean host = false;
-	public void processMessage(String message) {
-		if (message.startsWith("SetVelocity:")) {
-			String[] parts = message.substring("SetVelocity:".length()).split(",");
-			Vector2 velocity = new Vector2(Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
-			// Server has recv set velocity
-			if (host) {
-				this.manager.setVelocity(2, velocity);
-			} else {
-				this.manager.setVelocity(1, velocity);
-			}
-		} else if(message.startsWith("SYNC:")) {
-			message = message.substring("SYNC:".length());
-			try {
-				GameState gameState = new ObjectMapper().readValue(message, GameState.class);
-				manager.sync(gameState);
-			} catch (JsonProcessingException e) {
-				throw new RuntimeException(e);
-			}
-		}
 	}
 }
