@@ -17,7 +17,6 @@ public class GameManager implements Runnable {
         this.gameState.player1.update(dt);
         this.gameState.player2.update(dt);
         this.gameState.ball.update(dt);
-        System.out.println(gameState.ball.position.y);
         if (gameState.ball.contains(gameState.player1)) {
             gameState.ball.bouncePlayer(gameState.player1);
         } else if (gameState.ball.contains(gameState.player2)) {
