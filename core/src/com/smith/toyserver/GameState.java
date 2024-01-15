@@ -18,6 +18,6 @@ public class GameState {
         player2.position = new Vector2(1870, 490);
         player2.size = new Vector2(20, 100);
 
-        gameStarted = true;
+        gameStarted = false;
     }
 }
