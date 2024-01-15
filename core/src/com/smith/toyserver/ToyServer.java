@@ -116,8 +116,6 @@ public class ToyServer extends Game {
 	@Override
 	public void render() {
 		super.render();
-		System.out.println("Render");
-
 	}
 
 	// Gets called from UI

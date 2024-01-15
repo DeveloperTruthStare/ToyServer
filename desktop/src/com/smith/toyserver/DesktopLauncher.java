@@ -33,7 +33,6 @@ public class DesktopLauncher {
 	public static void main (String[] arg) {
 		// Initialize Steam
 		try {
-			SteamGameServerAPI.loadLibraries();
 			SteamAPI.loadLibraries();
 
 			if (!SteamAPI.init()) {
