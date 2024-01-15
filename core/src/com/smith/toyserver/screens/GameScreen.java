@@ -10,7 +10,7 @@ import com.smith.toyserver.GameState;
 import com.smith.toyserver.ToyServer;
 import com.smith.toyserver.Vector2;
 
-public class GameScreen implements Screen, InputProcessor {
+public class GameScreen implements Screen, InputProcessor{
     private GameState gameState;
     public GameScreen() {
         gameState = new GameState();
@@ -59,21 +59,11 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
-        if (keycode == Input.Keys.W) {
-            //gameManager.setPlayerVelocity(new Vector2(0, 10));
-        } else if (keycode == Input.Keys.S) {
-            //gameManager.setPlayerVelocity(new Vector2(0, -10));
-        }
         return false;
     }
 
     @Override
     public boolean keyUp(int keycode) {
-        if (keycode == Input.Keys.W) {
-            //gameManager.setPlayerVelocity(new Vector2(0, 0));
-        } else if (keycode == Input.Keys.S) {
-            //gameManager.setPlayerVelocity(new Vector2(0, 0));
-        }
         return false;
     }
 

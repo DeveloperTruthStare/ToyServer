@@ -20,7 +20,7 @@ public class DesktopLauncher {
 		public void run() {
 			while (mainThread.isAlive()) {
 				try {
-					Thread.sleep(1000  / 60);
+					Thread.sleep(1000  / 15);
 				} catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
