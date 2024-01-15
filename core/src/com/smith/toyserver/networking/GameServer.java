@@ -42,7 +42,7 @@ public class GameServer extends MySteamNetworkConnection implements Runnable {
     public void syncClients(GameState gameState) {
         try {
             String syncMsg = "SYNC:" + new ObjectMapper().writeValueAsString(gameState);
-            sendMsg(clientId, syncMsg);
+            networkGameController.sendMsg(clientId, syncMsg);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
